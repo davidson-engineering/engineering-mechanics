@@ -1,0 +1,69 @@
+[project]
+name = "project_or_module_name"
+description = "A_short_description"
+
+# If a project, then you can specify version here
+version = "0.0.1"
+# If a module, then fetch version dynamically (see [tool.setuptools.dynamic] below)
+dynamic = ["version"]
+
+readme = "README.md"
+requires-python = ">=3.9"
+license = {file = "LICENSE"}
+authors = [
+  {email = "matthew@davidson.engineering"},
+  {name = "Matthew Davidson"}
+]
+
+classifiers = [
+    "Development Status :: 1 - Planning",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+
+dependencies = [
+   "python-config-loader @ git+https://github.com/davidson-engineering/python-config-loader.git", 
+]
+
+# Use this line if your project comprises of modules only without any ./src/* files
+#[tool.setuptools]
+#py-modules = []
+
+# If a module, then use fetch version from src/module_name/__init__.py
+[tool.setuptools.dynamic]
+version = {attr = "module0.__version__"}
+
+
+[project.optional-dependencies]
+test = [
+  "pytest >= 7.1.1",
+]
+
+
+[tool.pytest.ini_options]
+#addopts = "--maxfail=1 -s"
+#console_output_style = "progress"
+#log_cli = false
+#log_level = "INFO"
+#log_cli_format = "%(asctime)s %(levelname)s %(message)s"
+#log_file = "logs/pytest-logs.txt"
+#log_file_level = "INFO"
+
+# [project.urls]
+# homepage = "https://example.com"
+# documentation = "https://readthedocs.org"
+# repository = "https://github.com"
+# changelog = "https://github.com/me/spam/blob/master/CHANGELOG.md"
+
+# [project.scripts]
+# spam-cli = "spam:main_cli"
+
+# [project.gui-scripts]
+# spam-gui = "spam:main_gui"
+
+# [project.entry-points."spam.magical"]
+# tomatoes = "spam:main_tomatoes"
