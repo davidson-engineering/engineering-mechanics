@@ -26,7 +26,7 @@ classifiers = [
 
 dependencies = [
   "python-config-loader @ git+https://github.com/davidson-engineering/python-config-loader.git",
-  "scipy>=1.14.0",
+  "scipy>=1.13.0",
   "numpy>=2.1.3",
 ]
 
