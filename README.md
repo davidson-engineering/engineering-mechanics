@@ -32,7 +32,7 @@ pip install .
 For a fully constrained system with multiple reactions, you can construct an equilibrium matrix and check for overconstraints:
 
 ```python
-from engineering_mechanics import StaticsCalculator, BoundVector, Reaction
+from statics import StaticsCalculator, BoundVector, Reaction
 
 # Define forces and reactions here, then use StaticsCalculator to analyze
 forces = [BoundVector(magnitude=np.array([0, 0, -100]), location=np.array([1, 0, 0]))]
@@ -40,8 +40,9 @@ moments = [BoundVector(magnitude=np.array([0, 10, -5]), location=np.array([0, 1,
 reactions = [Reaction(location=np.array([0, 0, 0]), constraint=np.eye(6))]
 
 calculator = StaticsCalculator(forces, moments, reactions)
-A, b = calculator.assemble_equilibrium_matrix()
-calculator.check_singularity(A)
+reactions_result = calculator.solve_reactions()
+print(reactions_result)
+>>> [[   0.    0.  100.    5. -110.    5.]]
 ```
 
 ## License
