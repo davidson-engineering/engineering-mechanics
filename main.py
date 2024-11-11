@@ -36,12 +36,14 @@ def main():
     moments = [
         BoundVector(magnitude=np.array([0, 10, -5]), location=np.array([0, 1, 0]))
     ]
-    reactions = [Reaction(location=np.array([0, 0, 0]), constraint=np.eye(6))]
+    reactions = [
+        Reaction(
+            location=np.array([0, 0, 0]), constraint=np.eye(6), name="Fixed support"
+        ),
+    ]
 
     calculator = StaticsCalculator(forces, moments, reactions)
-    reactions_result = calculator.solve_reactions()
-
-    print(f"{reactions_result=}")
+    calculator.run()
 
 
 if __name__ == "__main__":

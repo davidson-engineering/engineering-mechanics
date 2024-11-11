@@ -4,6 +4,8 @@ from typing import List
 from scipy.linalg import lstsq, null_space
 import warnings
 
+from prettytable import PrettyTable
+
 from mechanics import BoundVector
 
 
@@ -43,6 +45,7 @@ class Reaction(BoundVector):
     constraint: np.ndarray = field(default_factory=lambda: np.eye(6))
 
     def __post_init__(self):
+        super().__post_init__()
         # Check if the constraint is a 1x6 vector
         if self.constraint.shape == (6,):
             # Convert a 1x6 vector into a 6x6 matrix
@@ -142,3 +145,132 @@ class StaticsCalculator:
         A, b = self.assemble_equilibrium_matrix()
         reactions, residuals, rank, s = lstsq(A, b)
         return reactions.reshape((self.num_reactions, 6))
+
+    def print_summary(self, reactions_result, decimal_places=2):
+        """
+        Print summaries of input loads, constraints, and reactions using PrettyTable.
+
+        Args:
+            reactions_result (list): List of reaction results from solve_reactions(),
+                                     each entry should contain [Fx, Fy, Fz, Mx, My, Mz].
+            decimal_places (int): Number of decimal places to display for numeric values.
+        """
+        float_format = f"{{:.{decimal_places}f}}"
+
+        # Input Loads Table
+        loads_table = PrettyTable()
+        loads_table.field_names = ["Load", "Loc X", "Loc Y", "Loc Z", "Fx", "Fy", "Fz"]
+
+        for i, load in enumerate(self.forces):
+            loc_x, loc_y, loc_z = load.location
+            fx, fy, fz = load.magnitude
+            loads_table.add_row(
+                [
+                    f"Load {i + 1}",
+                    float_format.format(loc_x),
+                    float_format.format(loc_y),
+                    float_format.format(loc_z),
+                    float_format.format(fx),
+                    float_format.format(fy),
+                    float_format.format(fz),
+                ]
+            )
+
+        # Constraints Table
+        constraints_table = PrettyTable()
+        constraints_table.field_names = [
+            "Reaction",
+            "Constraint Matrix",
+            "Loc X",
+            "Loc Y",
+            "Loc Z",
+        ]
+
+        for i, reaction in enumerate(self.reactions):
+            loc_x, loc_y, loc_z = reaction.location
+            # Convert constraint matrix to multi-line string
+            constraint_matrix = reaction.constraint
+            if isinstance(constraint_matrix, (list, np.ndarray)):
+                constraint_matrix_str = "\n".join(
+                    [
+                        "[" + " ".join((f"{value:g}") for value in row) + "]"
+                        for row in constraint_matrix
+                    ]
+                )
+            else:
+                constraint_matrix_str = str(
+                    constraint_matrix
+                )  # Use string representation for non-matrix types
+
+            constraints_table.add_row(
+                [
+                    reaction.name,
+                    constraint_matrix_str,
+                    float_format.format(loc_x),
+                    float_format.format(loc_y),
+                    float_format.format(loc_z),
+                ]
+            )
+
+        # Results Table
+        reactions_table = PrettyTable()
+        reactions_table.field_names = [
+            "Reaction",
+            "Fx",
+            "Fy",
+            "Fz",
+            "Mx",
+            "My",
+            "Mz",
+        ]
+
+        for i, reaction in enumerate(self.reactions):
+            loc_x, loc_y, loc_z = reaction.location
+            # Concatenate forces and moments
+            reaction_values = reactions_result[i]
+            row = [
+                reaction.name,
+                *[float_format.format(val) for val in reaction_values],
+            ]
+            reactions_table.add_row(row)
+
+        # Set alignment: left-align the first column, center-align others
+        loads_table.align["Load"] = "l"
+        constraints_table.align["Reaction"] = "l"
+        reactions_table.align["Reaction"] = "l"
+
+        for col in loads_table.field_names[1:]:
+            loads_table.align[col] = "c"
+        for col in constraints_table.field_names[1:]:
+            constraints_table.align[col] = "c"
+        for col in reactions_table.field_names[1:]:
+            reactions_table.align[col] = "c"
+
+        # ANSI color codes
+        green = "\033[32m"  # Green color
+        grey = "\033[90m"  # Grey color
+        reset_color = "\033[0m"  # Reset color
+
+        def print_table_with_green_borders(table):
+            """Helper function to print table with green horizontal borders only."""
+            table_str = table.get_string()
+            for line in table_str.splitlines():
+                # Color only the horizontal lines (contains only +, -)
+                if set(line.strip()) <= {"+", "-", "="}:
+                    print(f"{green}{line}{reset_color}")
+                else:
+                    # Apply grey color to vertical borders and reset color for text
+                    colored_line = line.replace("|", f"{grey}|{reset_color}")
+                    print(colored_line)
+
+        # Print all tables
+        print("Input Loads Summary:")
+        print_table_with_green_borders(loads_table)
+        print("\nConstraints Summary:")
+        print_table_with_green_borders(constraints_table)
+        print("\nReactions Summary:")
+        print_table_with_green_borders(reactions_table)
+
+    def run(self):
+        reactions_result = self.solve_reactions()
+        self.print_summary(reactions_result)
