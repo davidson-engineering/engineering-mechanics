@@ -45,6 +45,7 @@ def main():
 
     calculator = ReactionSolver(loads, reactions)
     calculator.solve()
+    calculator.print_summary(html_report_path="report.html")
 
 
 if __name__ == "__main__":

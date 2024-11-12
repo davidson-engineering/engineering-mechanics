@@ -261,7 +261,7 @@ class ReactionSolver(StaticsSolver):
             logger.error("Equilibrium check failed.")
             return False
 
-    def print_summary(self, reactions_result, decimal_places=2, html_report_path=None):
+    def print_summary(self, decimal_places=2, html_report_path=None):
         """
         Print summaries of input loads, constraints, and reactions using PrettyTable and optionally generate an HTML report.
 
@@ -275,7 +275,7 @@ class ReactionSolver(StaticsSolver):
 
         # Create PrettyTables for console printout
         loads_table, constraints_table, reactions_table = self._create_pretty_tables(
-            reactions_result, float_format
+            float_format
         )
 
         # Print tables to console with color
@@ -289,13 +289,13 @@ class ReactionSolver(StaticsSolver):
         # Generate HTML report if a path is provided
         if html_report_path:
             html_content = self._generate_html_report(
-                loads_table, constraints_table, reactions_table, reactions_result
+                loads_table, constraints_table, reactions_table
             )
             with open(html_report_path, "w") as file:
                 file.write(html_content)
             logger.info(f"HTML report saved to {html_report_path}")
 
-    def _create_pretty_tables(self, reactions_result, float_format):
+    def _create_pretty_tables(self, float_format):
         # Load table
         loads_table = PrettyTable()
         loads_table.field_names = [
@@ -362,14 +362,12 @@ class ReactionSolver(StaticsSolver):
                 float_format.format(loc_y),
                 float_format.format(loc_z),
             ]
-            row.extend(float_format.format(val) for val in reactions_result[i])
+            row.extend(float_format.format(val) for val in reaction.magnitude)
             reactions_table.add_row(row)
 
         return loads_table, constraints_table, reactions_table
 
-    def _generate_html_report(
-        self, loads_table, constraints_table, reactions_table, reactions_result
-    ):
+    def _generate_html_report(self, loads_table, constraints_table, reactions_table):
         # Convert PrettyTables to HTML tables
         def pretty_table_to_html(pretty_table):
             return pretty_table.get_html_string()
