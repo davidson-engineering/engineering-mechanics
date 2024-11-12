@@ -3,9 +3,10 @@ import numpy as np
 
 from mechanics.mechanics import Bodies
 from statics import (
-    StaticsCalculator,
+    ReactionSolver,
     BoundVector,
     Reaction,
+    Load,
     UnderconstrainedError,
     IllConditionedError,
     OverconstrainedWarning,
@@ -31,10 +32,9 @@ def test_mass_to_force_conversion():
 
 def test_statics_calculator_simple():
     # Simple case: a single force balanced by a single fixed reaction
-    forces = [
-        BoundVector(magnitude=np.array([0, 0, -100]), location=np.array([0, 0, 0]))
+    loads = [
+        Load(magnitude=np.array([0, 0, -100, 0, 0, 0]), location=np.array([0, 0, 0]))
     ]
-    moments = []
     reactions = [
         Reaction(
             location=np.array([0, 0, 0]),
@@ -42,8 +42,8 @@ def test_statics_calculator_simple():
         )
     ]
 
-    calculator = StaticsCalculator(forces=forces, moments=moments, reactions=reactions)
-    reactions_result = calculator.solve_reactions()
+    solver = ReactionSolver(loads=loads, reactions=reactions)
+    reactions_result = solver.solve_reactions()
 
     # Check that the reaction force balances the applied force
     expected_reaction = np.array([0, 0, 100, 0, 0, 0])  # Reaction in opposite direction
@@ -55,8 +55,7 @@ def test_statics_calculator_simple():
 def test_statics_calculator_with_mass():
     # Case with mass: mass should be converted to force
     body = Body(mass=10, cog=np.array([1, 0, 0]))
-    forces = [body * GRAVITY]
-    moments = []
+    loads = [body * GRAVITY]
     reactions = [
         Reaction(
             location=np.array([1, 0, 0]),
@@ -64,7 +63,7 @@ def test_statics_calculator_with_mass():
         )
     ]
 
-    calculator = StaticsCalculator(forces=forces, moments=moments, reactions=reactions)
+    calculator = ReactionSolver(loads=loads, reactions=reactions)
     reactions_result = calculator.solve_reactions()
 
     # Expected reaction: upward force balancing the mass (10 * 9.81 N)
@@ -74,9 +73,9 @@ def test_statics_calculator_with_mass():
     ), "Statics calculation with mass failed"
 
 
-def _test_statics_calculator_func(forces, moments, reactions, expected_reactions):
+def _test_statics_calculator_func(loads, reactions, expected_reactions):
     # Instantiate the statics calculator
-    calculator = StaticsCalculator(forces=forces, moments=moments, reactions=reactions)
+    calculator = ReactionSolver(loads=loads, reactions=reactions)
     reactions_result = calculator.solve_reactions()
 
     # Check each reaction matches the expected result
@@ -88,12 +87,9 @@ def _test_statics_calculator_func(forces, moments, reactions, expected_reactions
 
 def test_statics_calculator_multiple_reactions_1():
     # Forces applied at different locations
-    forces = [
+    loads = [
         BoundVector(magnitude=np.array([0, 0, -100]), location=np.array([0, 0, 1])),
     ]
-
-    # Moments applied externally
-    moments = [BoundVector(magnitude=np.array([0, 0, 0]), location=np.array([0, 0, 0]))]
 
     # Reactions: fixed and pinned constraints
     reactions = [
@@ -113,18 +109,15 @@ def test_statics_calculator_multiple_reactions_1():
         np.array([0, 0, 50, 0, 0, 0]),  # Reaction at the other fixed point
     ]
 
-    _test_statics_calculator_func(forces, moments, reactions, expected_reactions)
+    _test_statics_calculator_func(loads, reactions, expected_reactions)
 
 
 def test_statics_calculator_multiple_reactions_2():
     # Forces applied at different locations
-    forces = [
+    loads = [
         BoundVector(magnitude=np.array([0, 0, -100]), location=np.array([0, 0, 1])),
         BoundVector(magnitude=np.array([100, 0, 0]), location=np.array([0, 0, 0])),
     ]
-
-    # Moments applied externally
-    moments = [BoundVector(magnitude=np.array([0, 0, 0]), location=np.array([0, 0, 0]))]
 
     # Reactions: fixed, roller constraints with a mix of 1x6 and 6x6 constraints
     reactions = [
@@ -144,18 +137,15 @@ def test_statics_calculator_multiple_reactions_2():
         np.array([0, 0, 50, 0, 0, 0]),  # Reaction at the roller point
     ]
 
-    _test_statics_calculator_func(forces, moments, reactions, expected_reactions)
+    _test_statics_calculator_func(loads, reactions, expected_reactions)
 
 
 def test_statics_calculator_multiple_reactions_3():
     # Forces applied at different locations
-    forces = [
+    loads = [
         BoundVector(magnitude=np.array([0, 0, -150]), location=np.array([0, 0, 1])),
         BoundVector(magnitude=np.array([100, 0, 0]), location=np.array([0, 0, 0])),
     ]
-
-    # Moments applied externally
-    moments = [BoundVector(magnitude=np.array([0, 0, 0]), location=np.array([0, 0, 0]))]
 
     # Reactions: fixed, roller constraints with a mix of 1x6 and 6x6 constraints
     reactions = [
@@ -180,16 +170,13 @@ def test_statics_calculator_multiple_reactions_3():
         np.array([0, 0, 0, 0, 0, 0]),  # Reaction at the roller point
     ]
 
-    _test_statics_calculator_func(forces, moments, reactions, expected_reactions)
+    _test_statics_calculator_func(loads, reactions, expected_reactions)
 
 
 def test_statics_calculator_multiple_reactions_4():
 
     body = Body(mass=10, cog=np.array([1, 0, 0]))
-    forces = [body * [0, 0, -10]]
-
-    # Moments applied externally
-    moments = [BoundVector(magnitude=np.array([0, 0, 0]), location=np.array([0, 0, 0]))]
+    loads = [body * [0, 0, -10]]
 
     # Reactions: fixed, roller constraints with a mix of 1x6 and 6x6 constraints
     reactions = [
@@ -206,11 +193,13 @@ def test_statics_calculator_multiple_reactions_4():
     ]
     # Should raise an error due to underconstrained system about the x-axis
     with pytest.raises(UnderconstrainedError):
-        _test_statics_calculator_func(forces, moments, reactions, None)
+        _test_statics_calculator_func(loads, reactions, None)
 
-    moments = [
-        BoundVector(magnitude=np.array([100, 0, 0]), location=np.array([0, 0, 0]))
-    ]
+    loads.append(
+        BoundVector(
+            magnitude=np.array([0, 0, 0, 100, 0, 0]), location=np.array([0, 0, 0])
+        )
+    )
 
     # Reactions: fixed, roller constraints with a mix of 1x6 and 6x6 constraints
     reactions = [
@@ -232,7 +221,7 @@ def test_statics_calculator_multiple_reactions_4():
         np.array([0, 0, 25, 0, -25, 0]),  # Reaction at the roller point
     ]
 
-    _test_statics_calculator_func(forces, moments, reactions, expected_reactions)
+    _test_statics_calculator_func(loads, reactions, expected_reactions)
 
 
 def test_statics_calculator_multiple_reactions_5():
@@ -243,10 +232,7 @@ def test_statics_calculator_multiple_reactions_5():
 
     assert bodies.mass == 110
 
-    forces = [bodies * GRAVITY]
-
-    # Moments applied externally
-    moments = [BoundVector(magnitude=np.array([0, 0, 0]), location=np.array([0, 0, 0]))]
+    loads = [bodies * GRAVITY]
 
     # Reactions: fixed, roller constraints with a mix of 1x6 and 6x6 constraints
     reactions = [
@@ -277,4 +263,4 @@ def test_statics_calculator_multiple_reactions_5():
     )
 
     # with pytest.raises(ValueError):
-    _test_statics_calculator_func(forces, moments, reactions, expected_reactions)
+    _test_statics_calculator_func(loads, reactions, expected_reactions)

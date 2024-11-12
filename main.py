@@ -22,7 +22,7 @@
 # # Configure logging using the specified logging configuration
 # dictConfig(configs["logging"])
 
-from statics import StaticsCalculator, BoundVector, Reaction
+from statics import ReactionSolver, Load, Reaction
 
 
 def main():
@@ -30,14 +30,11 @@ def main():
     import numpy as np
 
     # Define forces and reactions here, then use StaticsCalculator to analyze
-    forces = [
-        BoundVector(
-            magnitude=np.array([0, 0, -100]), location=np.array([1, 0, 0]), name="F_a"
-        )
-    ]
-    moments = [
-        BoundVector(
-            magnitude=np.array([0, 10, -5]), location=np.array([0, 1, 0]), name="M_a"
+    loads = [
+        Load(
+            magnitude=np.array([0, 0, -100, 0, -10, 0]),
+            location=np.array([1, 0, 0]),
+            name="F_a",
         )
     ]
     reactions = [
@@ -46,7 +43,7 @@ def main():
         ),
     ]
 
-    calculator = StaticsCalculator(forces, moments, reactions)
+    calculator = ReactionSolver(loads, reactions)
     calculator.run()
 
 

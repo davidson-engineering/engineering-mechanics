@@ -43,6 +43,18 @@ def skew_sym(x) -> np.array:
 
 
 @dataclass
+class Load(BoundVector):
+    magnitude: np.ndarray = field(default_factory=lambda: np.zeros(6))
+
+    def __post_init__(self):
+        super().__post_init__()
+        if self.magnitude.size < 6:
+            self.magnitude = np.pad(self.magnitude, (0, 6 - self.magnitude.size))
+        if self.magnitude.size > 6:
+            raise ValueError("Magnitude must be a 1x6 vector.")
+
+
+@dataclass
 class Reaction(BoundVector):
 
     constraint: np.ndarray = field(default_factory=lambda: np.eye(6))
@@ -60,18 +72,25 @@ class Reaction(BoundVector):
             raise ValueError("Constraint must be either a 1x6 vector or a 6x6 matrix")
 
 
-class StaticsCalculator:
+class StaticsSolver:
+    pass
+
+
+class ReactionSolver(StaticsSolver):
     def __init__(
         self,
-        forces: List[BoundVector],
-        moments: List[BoundVector],
+        loads: List[BoundVector],
         reactions: List[Reaction],
     ):
-        self.forces = forces
-        self.moments = moments
+        self.loads = loads
         self.reactions = reactions
-        self.num_reactions = len(reactions)
         self.dof = 6  # Degrees of freedom for each reaction
+        self.num_reactions = len(reactions)
+
+        # Pad loads to 6 components if necessary
+        for load in self.loads:
+            if load.magnitude.size < 6:
+                load.magnitude = np.pad(load.magnitude, (0, 6 - load.magnitude.size))
 
     def assemble_equilibrium_matrix(self):
         # A matrix size: 6 x (6 * num_reactions)
@@ -79,25 +98,29 @@ class StaticsCalculator:
         A = np.zeros((self.dof, num_unknowns))
         b = np.zeros(self.dof)
 
-        # Step 1: Force equilibrium - sum of external forces
-        total_force = np.sum([f.magnitude for f in self.forces], axis=0)
-        b[0:3] = -total_force  # Force balance for Fx, Fy, Fz
+        # load.magnitude = [Fx, Fy, Fz, Mx, My, Mz]
+        # load.location = [x, y, z]
 
-        # Step 2: Moment equilibrium - sum of moments from forces and applied moments
+        locations = np.array([l.location for l in self.loads])  # Shape (n_loads, 3)
+        magnitudes = np.array([l.magnitude for l in self.loads])  # Shape (n_loads, 6)
+
+        # Step 1: Force equilibrium - sum of external loads
+        b = -np.sum(magnitudes, axis=0)
+
+        # Step 2: Moment equilibrium - sum of moments from loads and applied moments
         total_moment = np.zeros(3)
 
-        # Add moments from external forces at their respective locations
-        for f in self.forces:
-            total_moment += np.cross(f.location, f.magnitude)
+        moments_from_forces = np.cross(
+            locations, magnitudes[:, 0:3]
+        )  # Shape (n_loads, 3)
+        # Sum all moments from forces
+        b[3:6] -= np.sum(moments_from_forces, axis=0)
 
-        # Add applied moments (including any additional moments from location offsets)
-        for m in self.moments:
-            total_moment += m.magnitude  # Direct contribution of applied moment
-            total_moment += np.cross(
-                m.location, m.magnitude
-            )  # Additional moment if offset from reference
+        # Add applied moments
+        cross_offsets = np.cross(locations, magnitudes[:, 3:6])  # Shape (n_moments, 3)
 
-        b[3:6] = -total_moment  # Moment balance for Mx, My, Mz
+        # Sum applied moments and cross products of moments with their locations
+        b[3:6] -= np.sum(cross_offsets, axis=0)
 
         # Step 3: Populate A matrix with constraints for each reaction
         for i, reaction in enumerate(self.reactions):
@@ -172,14 +195,14 @@ class StaticsCalculator:
     def solve_reactions(self):
         A, b = self.assemble_equilibrium_matrix()
 
-        def generate_report(A, b, reactions, solver):
+        def generate_report(A, b, result, solver):
             solver_report = {
                 "A": A,
                 "b": b,
                 "rank": np.linalg.matrix_rank(A),
                 "condition_number": np.linalg.cond(A),
                 "null_space": null_space(A),
-                "reactions": reactions,
+                "result": result,
                 "solver": solver.__name__,
             }
             return solver_report
@@ -193,12 +216,12 @@ class StaticsCalculator:
         solvers = [direct_solver, leastsquares_solver]
         for solver in solvers:
             try:
-                reactions = solver(A, b).reshape((self.num_reactions, self.dof))
-                self.report = generate_report(A, b, reactions, solver)
+                result = solver(A, b).reshape((self.num_reactions, self.dof))
+                self.report = generate_report(A, b, result, solver)
 
                 logger.info(f"Solver {solver.__name__} succeeded.")
 
-                return reactions
+                return result
 
             except np.linalg.LinAlgError:
                 logger.warning(f"Solver {solver} failed. Trying next solver.")
@@ -218,14 +241,25 @@ class StaticsCalculator:
         float_format = f"{{:.{decimal_places}f}}"
 
         # Input Loads Table
-        forces_table = PrettyTable()
-        forces_table.field_names = ["Load", "Loc X", "Loc Y", "Loc Z", "Fx", "Fy", "Fz"]
+        loads_table = PrettyTable()
+        loads_table.field_names = [
+            "Load",
+            "Loc X",
+            "Loc Y",
+            "Loc Z",
+            "Fx",
+            "Fy",
+            "Fz",
+            "Mx",
+            "My",
+            "Mz",
+        ]
 
-        for i, load in enumerate(self.forces):
+        for i, load in enumerate(self.loads):
             name = load.name if load.name else f"Force {i+1}"
             loc_x, loc_y, loc_z = load.location
-            fx, fy, fz = load.magnitude
-            forces_table.add_row(
+            fx, fy, fz, mx, my, mz = load.magnitude
+            loads_table.add_row(
                 [
                     name,
                     float_format.format(loc_x),
@@ -234,44 +268,16 @@ class StaticsCalculator:
                     float_format.format(fx),
                     float_format.format(fy),
                     float_format.format(fz),
-                ]
-            )
-
-        moments_table = PrettyTable()
-        moments_table.field_names = [
-            "Moment",
-            "Loc X",
-            "Loc Y",
-            "Loc Z",
-            "Mx",
-            "My",
-            "Mz",
-        ]
-
-        for i, moment in enumerate(self.moments):
-            name = moment.name if moment.name else f"Moment {i+1}"
-            loc_x, loc_y, loc_z = moment.location
-            mx, my, mz = moment.magnitude
-            moments_table.add_row(
-                [
-                    name,
-                    float_format.format(loc_x),
-                    float_format.format(loc_y),
-                    float_format.format(loc_z),
                     float_format.format(mx),
                     float_format.format(my),
                     float_format.format(mz),
                 ]
             )
-
         # Constraints Table
         constraints_table = PrettyTable()
         constraints_table.field_names = [
             "Reaction",
             "Constraint Matrix",
-            "Loc X",
-            "Loc Y",
-            "Loc Z",
         ]
 
         for i, reaction in enumerate(self.reactions):
@@ -294,9 +300,6 @@ class StaticsCalculator:
                 [
                     reaction.name,
                     constraint_matrix_str,
-                    float_format.format(loc_x),
-                    float_format.format(loc_y),
-                    float_format.format(loc_z),
                 ]
             )
 
@@ -304,6 +307,9 @@ class StaticsCalculator:
         reactions_table = PrettyTable()
         reactions_table.field_names = [
             "Reaction",
+            "Loc X",
+            "Loc Y",
+            "Loc Z",
             "Fx",
             "Fy",
             "Fz",
@@ -314,21 +320,24 @@ class StaticsCalculator:
 
         for i, reaction in enumerate(self.reactions):
             loc_x, loc_y, loc_z = reaction.location
-            # Concatenate forces and moments
+            # Concatenate loads and moments
             reaction_values = reactions_result[i]
             row = [
                 reaction.name,
+                float_format.format(loc_x),
+                float_format.format(loc_y),
+                float_format.format(loc_z),
                 *[float_format.format(val) for val in reaction_values],
             ]
             reactions_table.add_row(row)
 
         # Set alignment: left-align the first column, center-align others
-        forces_table.align["Load"] = "l"
+        loads_table.align["Load"] = "l"
         constraints_table.align["Reaction"] = "l"
         reactions_table.align["Reaction"] = "l"
 
-        for col in forces_table.field_names[1:]:
-            forces_table.align[col] = "c"
+        for col in loads_table.field_names[1:]:
+            loads_table.align[col] = "c"
         for col in constraints_table.field_names[1:]:
             constraints_table.align[col] = "c"
         for col in reactions_table.field_names[1:]:
@@ -356,10 +365,8 @@ class StaticsCalculator:
                     print(colored_line)
 
         # Print all tables
-        print("Input Forces Summary:")
-        print_table_with_colored_borders(forces_table)
-        print("\nInput Moments Summary:")
-        print_table_with_colored_borders(moments_table)
+        print("Input loads Summary:")
+        print_table_with_colored_borders(loads_table)
         print("\nConstraints Summary:")
         print_table_with_colored_borders(constraints_table)
         print("\nReactions Summary:")
