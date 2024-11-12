@@ -1,6 +1,6 @@
 # Engineering Mechanics
 
-The **Engineering Mechanics** repository provides a set of Python classes and tools to model and solve engineering mechanics problems, including statics, and dyanmics problems. This repository is aimed at supporting mechanical engineering calculations and simulations.
+This repository provides a set of Python classes and tools to model and solve engineering mechanics problems, including statics, and dyanmics problems. This repository is aimed at supporting mechanical engineering calculations and simulations.
 
 ## Overview
 
