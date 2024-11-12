@@ -143,7 +143,21 @@ class StaticsCalculator:
 
     def solve_reactions(self):
         A, b = self.assemble_equilibrium_matrix()
-        reactions, residuals, rank, s = lstsq(A, b)
+        try:
+            # If A is full rank and square, use direct solution for improved performance
+            reactions = np.linalg.solve(A, b)
+            self.solver_report = {"method": "solve"}
+        except np.linalg.LinAlgError:
+            # If A is rank-deficient or not-square, use least-squares to find a solution
+            reactions, residuals, rank, s = lstsq(A, b)
+
+            self.solver_report = {
+                "method": "lstsq",
+                "residuals": residuals,
+                "rank": rank,
+                "singular_values": s,
+            }
+
         return reactions.reshape((self.num_reactions, 6))
 
     def print_summary(self, reactions_result, decimal_places=2):
@@ -158,21 +172,49 @@ class StaticsCalculator:
         float_format = f"{{:.{decimal_places}f}}"
 
         # Input Loads Table
-        loads_table = PrettyTable()
-        loads_table.field_names = ["Load", "Loc X", "Loc Y", "Loc Z", "Fx", "Fy", "Fz"]
+        forces_table = PrettyTable()
+        forces_table.field_names = ["Load", "Loc X", "Loc Y", "Loc Z", "Fx", "Fy", "Fz"]
 
         for i, load in enumerate(self.forces):
+            name = load.name if load.name else f"Force {i+1}"
             loc_x, loc_y, loc_z = load.location
             fx, fy, fz = load.magnitude
-            loads_table.add_row(
+            forces_table.add_row(
                 [
-                    f"Load {i + 1}",
+                    name,
                     float_format.format(loc_x),
                     float_format.format(loc_y),
                     float_format.format(loc_z),
                     float_format.format(fx),
                     float_format.format(fy),
                     float_format.format(fz),
+                ]
+            )
+
+        moments_table = PrettyTable()
+        moments_table.field_names = [
+            "Moment",
+            "Loc X",
+            "Loc Y",
+            "Loc Z",
+            "Mx",
+            "My",
+            "Mz",
+        ]
+
+        for i, moment in enumerate(self.moments):
+            name = moment.name if moment.name else f"Moment {i+1}"
+            loc_x, loc_y, loc_z = moment.location
+            mx, my, mz = moment.magnitude
+            moments_table.add_row(
+                [
+                    name,
+                    float_format.format(loc_x),
+                    float_format.format(loc_y),
+                    float_format.format(loc_z),
+                    float_format.format(mx),
+                    float_format.format(my),
+                    float_format.format(mz),
                 ]
             )
 
@@ -235,12 +277,12 @@ class StaticsCalculator:
             reactions_table.add_row(row)
 
         # Set alignment: left-align the first column, center-align others
-        loads_table.align["Load"] = "l"
+        forces_table.align["Load"] = "l"
         constraints_table.align["Reaction"] = "l"
         reactions_table.align["Reaction"] = "l"
 
-        for col in loads_table.field_names[1:]:
-            loads_table.align[col] = "c"
+        for col in forces_table.field_names[1:]:
+            forces_table.align[col] = "c"
         for col in constraints_table.field_names[1:]:
             constraints_table.align[col] = "c"
         for col in reactions_table.field_names[1:]:
@@ -251,25 +293,31 @@ class StaticsCalculator:
         grey = "\033[90m"  # Grey color
         reset_color = "\033[0m"  # Reset color
 
-        def print_table_with_green_borders(table):
+        def print_table_with_colored_borders(
+            table, vertical_border_color=green, horizontal_border_color=grey
+        ):
             """Helper function to print table with green horizontal borders only."""
             table_str = table.get_string()
             for line in table_str.splitlines():
                 # Color only the horizontal lines (contains only +, -)
                 if set(line.strip()) <= {"+", "-", "="}:
-                    print(f"{green}{line}{reset_color}")
+                    print(f"{vertical_border_color}{line}{reset_color}")
                 else:
                     # Apply grey color to vertical borders and reset color for text
-                    colored_line = line.replace("|", f"{grey}|{reset_color}")
+                    colored_line = line.replace(
+                        "|", f"{horizontal_border_color}|{reset_color}"
+                    )
                     print(colored_line)
 
         # Print all tables
-        print("Input Loads Summary:")
-        print_table_with_green_borders(loads_table)
+        print("Input Forces Summary:")
+        print_table_with_colored_borders(forces_table)
+        print("\nInput Moments Summary:")
+        print_table_with_colored_borders(moments_table)
         print("\nConstraints Summary:")
-        print_table_with_green_borders(constraints_table)
+        print_table_with_colored_borders(constraints_table)
         print("\nReactions Summary:")
-        print_table_with_green_borders(reactions_table)
+        print_table_with_colored_borders(reactions_table)
 
     def run(self):
         reactions_result = self.solve_reactions()

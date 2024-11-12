@@ -31,10 +31,14 @@ def main():
 
     # Define forces and reactions here, then use StaticsCalculator to analyze
     forces = [
-        BoundVector(magnitude=np.array([0, 0, -100]), location=np.array([1, 0, 0]))
+        BoundVector(
+            magnitude=np.array([0, 0, -100]), location=np.array([1, 0, 0]), name="F_a"
+        )
     ]
     moments = [
-        BoundVector(magnitude=np.array([0, 10, -5]), location=np.array([0, 1, 0]))
+        BoundVector(
+            magnitude=np.array([0, 10, -5]), location=np.array([0, 1, 0]), name="M_a"
+        )
     ]
     reactions = [
         Reaction(
