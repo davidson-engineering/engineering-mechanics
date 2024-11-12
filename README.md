@@ -32,17 +32,25 @@ pip install .
 For a fully constrained system with multiple reactions, you can construct an equilibrium matrix and check for overconstraints:
 
 ```python
-from statics import StaticsCalculator, BoundVector, Reaction
+import numpy as np
+from statics import StaticsCalculator, Load, Reaction
 
 # Define forces and reactions here, then use StaticsCalculator to analyze
-forces = [BoundVector(magnitude=np.array([0, 0, -100]), location=np.array([1, 0, 0]))]
-moments = [BoundVector(magnitude=np.array([0, 10, -5]), location=np.array([0, 1, 0]))]
-reactions = [Reaction(location=np.array([0, 0, 0]), constraint=np.eye(6))]
+loads = [
+    Load(
+        magnitude=np.array([0, 0, -100, 0, -10, 0]),
+        location=np.array([1, 0, 0]),
+        name="Load_A",
+    )
+]
+reactions = [
+    Reaction(
+        location=np.array([0, 0, 0]), constraint=np.eye(6), name="Fixed support"
+    ),
+]
 
-calculator = StaticsCalculator(forces, moments, reactions)
-reactions_result = calculator.solve_reactions()
-print(reactions_result)
->>> [[   0.    0.  100.    5. -110.    5.]]
+calculator = ReactionSolver(loads, reactions)
+calculator.run()
 ```
 
 One can also print a summary table using prettytable:
@@ -52,31 +60,31 @@ reactions_result = calculator.run()
 ```
 
 ```console
-Input Loads Summary:
-+--------+-------+-------+-------+------+------+---------+
-| Load   | Loc X | Loc Y | Loc Z |  Fx  |  Fy  |    Fz   |
-+--------+-------+-------+-------+------+------+---------+
-| Load 1 |  1.00 |  0.00 |  0.00 | 0.00 | 0.00 | -100.00 |
-+--------+-------+-------+-------+------+------+---------+
+Input loads Summary:
++------+-------+-------+-------+------+------+---------+------+--------+------+
+| Load | Loc X | Loc Y | Loc Z |  Fx  |  Fy  |    Fz   |  Mx  |   My   |  Mz  |
++------+-------+-------+-------+------+------+---------+------+--------+------+
+| F_a  |  1.00 |  0.00 |  0.00 | 0.00 | 0.00 | -100.00 | 0.00 | -10.00 | 0.00 |
++------+-------+-------+-------+------+------+---------+------+--------+------+
 
 Constraints Summary:
-+---------------+-------------------+-------+-------+-------+
-| Reaction      | Constraint Matrix | Loc X | Loc Y | Loc Z |
-+---------------+-------------------+-------+-------+-------+
-| Fixed support |   [1 0 0 0 0 0]   |  0.00 |  0.00 |  0.00 |
-|               |   [0 1 0 0 0 0]   |       |       |       |
-|               |   [0 0 1 0 0 0]   |       |       |       |
-|               |   [0 0 0 1 0 0]   |       |       |       |
-|               |   [0 0 0 0 1 0]   |       |       |       |
-|               |   [0 0 0 0 0 1]   |       |       |       |
-+---------------+-------------------+-------+-------+-------+
++---------------+-------------------+
+| Reaction      | Constraint Matrix |
++---------------+-------------------+
+| Fixed support |   [1 0 0 0 0 0]   |
+|               |   [0 1 0 0 0 0]   |
+|               |   [0 0 1 0 0 0]   |
+|               |   [0 0 0 1 0 0]   |
+|               |   [0 0 0 0 1 0]   |
+|               |   [0 0 0 0 0 1]   |
++---------------+-------------------+
 
 Reactions Summary:
-+---------------+------+------+--------+------+---------+------+
-| Reaction      |  Fx  |  Fy  |   Fz   |  Mx  |    My   |  Mz  |
-+---------------+------+------+--------+------+---------+------+
-| Fixed support | 0.00 | 0.00 | 100.00 | 5.00 | -110.00 | 5.00 |
-+---------------+------+------+--------+------+---------+------+
++---------------+-------+-------+-------+------+------+--------+------+--------+-------+
+| Reaction      | Loc X | Loc Y | Loc Z |  Fx  |  Fy  |   Fz   |  Mx  |   My   |   Mz  |
++---------------+-------+-------+-------+------+------+--------+------+--------+-------+
+| Fixed support |  0.00 |  0.00 |  0.00 | 0.00 | 0.00 | 100.00 | 0.00 | -90.00 | 10.00 |
++---------------+-------+-------+-------+------+------+--------+------+--------+-------+
 ```
 ## License
 
