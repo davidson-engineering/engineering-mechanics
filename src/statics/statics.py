@@ -338,7 +338,12 @@ class ReactionSolver(StaticsSolver):
                     for row in reaction.constraint
                 ]
             )
-            constraints_table.add_row([f"Reaction {i+1}", constraint_matrix_str])
+            constraints_table.add_row(
+                [
+                    reaction.name if reaction.name else f"Reaction {i+1}",
+                    constraint_matrix_str,
+                ]
+            )
 
         # Reactions table
         reactions_table = PrettyTable()
