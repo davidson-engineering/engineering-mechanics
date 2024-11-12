@@ -44,7 +44,7 @@ def main():
     ]
 
     calculator = ReactionSolver(loads, reactions)
-    calculator.run()
+    calculator.solve()
 
 
 if __name__ == "__main__":

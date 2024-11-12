@@ -15,6 +15,127 @@ from constants.constants import GRAVITY
 from mechanics import Body
 
 
+@pytest.fixture
+def sample_loads():
+    # Define sample loads with positions and magnitudes
+    load1 = Load(
+        location=np.array([1.0, 0.0, 0.0]),
+        magnitude=np.array([10.0, 0.0, 0.0, 0.0, 0.0, 0.0]),
+    )
+    load2 = Load(
+        location=np.array([0.0, 1.0, 0.0]),
+        magnitude=np.array([0.0, 20.0, 0.0, 0.0, 0.0, 0.0]),
+    )
+    return [load1, load2]
+
+
+@pytest.fixture
+def sample_reactions():
+    # Define sample reactions with locations and constraints
+    reaction1 = Reaction(
+        location=np.array([0.0, 0.0, 0.0]), constraint=np.array([1, 1, 1, 1, 1, 0])
+    )
+    reaction2 = Reaction(
+        location=np.array([0.0, 1.0, 0.0]), constraint=np.array([1, 1, 1, 1, 0, 0])
+    )
+    return [reaction1, reaction2]
+
+
+@pytest.fixture
+def reaction_solver(sample_loads, sample_reactions):
+    return ReactionSolver(loads=sample_loads, reactions=sample_reactions)
+
+
+### Test Cases
+
+
+def test_assemble_equilibrium_matrix(reaction_solver):
+    """Test that the equilibrium matrix (A) and load vector (b) are correctly assembled."""
+    A, b = reaction_solver.assemble_equilibrium_matrix()
+
+    # Check dimensions of A and b
+    assert A.shape == (6, 6 * len(reaction_solver.reactions))
+    assert b.shape == (6,)
+
+
+def test_solve_reactions(reaction_solver):
+    """Test that reactions are solved without errors and that the solution is in equilibrium."""
+    reactions_result = reaction_solver.solve()
+
+    # Ensure a solution was found
+    assert reactions_result is not None
+    assert reactions_result.shape == (
+        len(reaction_solver.reactions),
+        reaction_solver.dof,
+    )
+
+    # Verify equilibrium (forces and moments balance)
+    reaction_solver.validate_results()
+
+
+def test_validate_reactions_passes(reaction_solver):
+    """Test that validate_reactions passes when reactions match input loads."""
+    # Solve reactions and validate the solution
+    reactions_result = reaction_solver.solve()
+    reaction_solver.validate_results()  # Should pass without error
+
+
+def test_ill_conditioned_error(reaction_solver):
+    """Test that an IllConditionedError is raised for an ill-conditioned matrix."""
+    reaction_solver.reactions[0].constraint = np.zeros((6, 6))  # Make matrix singular
+    reaction_solver.reactions[1].constraint = np.zeros((6, 6))  # Make matrix singular
+
+    with pytest.raises(IllConditionedError):
+        A, b = reaction_solver.assemble_equilibrium_matrix()
+        reaction_solver.check_condition_number(A)
+
+
+def test_underconstrained_error(reaction_solver):
+    """Test that an UnderconstrainedError is raised when the system is under-constrained."""
+    reaction_solver.reactions.pop()  # Remove one reaction to under-constrain
+
+    with pytest.raises(UnderconstrainedError):
+        reaction_solver.solve()
+
+
+# def test_overconstrained_warning(reaction_solver):
+#     """Test that an OverconstrainedWarning is issued when the system is over-constrained."""
+#     reaction_solver.reactions.append(
+#         Reaction(location=np.array([0.0, 0.0, 0.0]), constraint=np.eye(6))
+#     )  # Add redundant constraint
+
+#     with pytest.warns(OverconstrainedWarning):
+#         reaction_solver.solve()
+
+
+def test_print_summary(reaction_solver, capsys):
+    """Test that the summary printout works correctly."""
+    reactions_result = reaction_solver.solve()
+    reaction_solver.print_summary(reactions_result)
+
+    # Capture and check the printed output
+    captured = capsys.readouterr()
+    assert "Input loads Summary" in captured.out
+    assert "Constraints Summary" in captured.out
+    assert "Reactions Summary" in captured.out
+
+
+def test_html_report_generation(reaction_solver, tmp_path):
+    """Test that an HTML report is generated correctly."""
+    reactions_result = reaction_solver.solve()
+    html_report_path = tmp_path / "statics_solver_report.html"
+    reaction_solver.print_summary(reactions_result, html_report_path=html_report_path)
+
+    # Check that the HTML file was created and contains expected content
+    assert html_report_path.exists()
+    with open(html_report_path, "r") as f:
+        content = f.read()
+    assert "<html>" in content
+    assert "<h2>Input Loads Summary</h2>" in content
+    assert "<h2>Constraints Summary</h2>" in content
+    assert "<h2>Reactions Summary</h2>" in content
+
+
 def test_mass_to_force_conversion():
     # Test that a mass converts correctly to a force with gravity applied
     mass = Body(mass=10, cog=np.array([1, 1, 1]))
@@ -43,7 +164,7 @@ def test_statics_calculator_simple():
     ]
 
     solver = ReactionSolver(loads=loads, reactions=reactions)
-    reactions_result = solver.solve_reactions()
+    reactions_result = solver.solve()
 
     # Check that the reaction force balances the applied force
     expected_reaction = np.array([0, 0, 100, 0, 0, 0])  # Reaction in opposite direction
@@ -64,7 +185,7 @@ def test_statics_calculator_with_mass():
     ]
 
     calculator = ReactionSolver(loads=loads, reactions=reactions)
-    reactions_result = calculator.solve_reactions()
+    reactions_result = calculator.solve()
 
     # Expected reaction: upward force balancing the mass (10 * 9.81 N)
     expected_reaction = np.array([0, 0, 98.1, 0, 0, 0])
@@ -76,12 +197,12 @@ def test_statics_calculator_with_mass():
 def _test_statics_calculator_func(loads, reactions, expected_reactions):
     # Instantiate the statics calculator
     calculator = ReactionSolver(loads=loads, reactions=reactions)
-    reactions_result = calculator.solve_reactions()
+    calculator.solve()
 
     # Check each reaction matches the expected result
     for i, expected_reaction in enumerate(expected_reactions):
         assert np.allclose(
-            reactions_result[i], expected_reaction
+            calculator.reactions[i].magnitude, expected_reaction
         ), f"Reaction {i+1} does not match expected value"
 
 

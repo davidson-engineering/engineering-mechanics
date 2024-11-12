@@ -163,6 +163,8 @@ cython_debug/
 .vscode/
 *.code-workspace
 
+*.html
+
 # Secrets
 .*
 !.*-default
