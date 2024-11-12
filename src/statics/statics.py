@@ -3,10 +3,12 @@ import numpy as np
 from typing import List
 from scipy.linalg import lstsq, null_space
 import warnings
-
+import logging
 from prettytable import PrettyTable
 
 from mechanics import BoundVector
+
+logger = logging.getLogger(__name__)
 
 
 class UnderconstrainedError(ValueError):
@@ -42,6 +44,7 @@ def skew_sym(x) -> np.array:
 
 @dataclass
 class Reaction(BoundVector):
+
     constraint: np.ndarray = field(default_factory=lambda: np.eye(6))
 
     def __post_init__(self):
@@ -68,13 +71,13 @@ class StaticsCalculator:
         self.moments = moments
         self.reactions = reactions
         self.num_reactions = len(reactions)
+        self.dof = 6  # Degrees of freedom for each reaction
 
     def assemble_equilibrium_matrix(self):
         # A matrix size: 6 x (6 * num_reactions)
-        num_eqs = 6
-        num_unknowns = 6 * self.num_reactions
-        A = np.zeros((num_eqs, num_unknowns))
-        b = np.zeros(num_eqs)
+        num_unknowns = self.dof * self.num_reactions
+        A = np.zeros((self.dof, num_unknowns))
+        b = np.zeros(self.dof)
 
         # Step 1: Force equilibrium - sum of external forces
         total_force = np.sum([f.magnitude for f in self.forces], axis=0)
@@ -98,7 +101,7 @@ class StaticsCalculator:
 
         # Step 3: Populate A matrix with constraints for each reaction
         for i, reaction in enumerate(self.reactions):
-            reaction_index = 6 * i  # Column index for this reaction's components
+            reaction_index = self.dof * i  # Column index for this reaction's components
             constraint = reaction.constraint
 
             # Force constraints for this reaction (first three rows of A)
@@ -113,25 +116,49 @@ class StaticsCalculator:
             # Direct moment constraints - apply to moment equilibrium rows (last three rows of A)
             A[3:6, reaction_index + 3 : reaction_index + 6] = constraint[3:6, 3:6]
 
-        # Check for singularities
         self.check_singularity(A)
-        self.check_null_space(A)
 
         return A, b
 
+    def check_constraints(self):
+
+        def check_constraint_matrix_size(reaction):
+            if reaction.constraint.shape not in [(6,), (6, 6)]:
+                raise ValueError(
+                    f"Constraint matrix for reaction '{reaction.name}' must be a 1x6 vector or a 6x6 matrix."
+                )
+
+        for reaction in self.reactions:
+            check_constraint_matrix_size(reaction)
+
     def check_singularity(self, A):
+        self.check_rank(A)
+        self.check_condition_number(A)
+        self.check_null_space(A)
+
+    def check_rank(self, A):
         """Check if the equilibrium matrix A is singular or nearly singular."""
+
         rank = np.linalg.matrix_rank(A)
         if rank < min(A.shape):
             raise UnderconstrainedError(
                 f"Equilibrium matrix is under-constrained or redundant with rank={rank}. Check constraints."
             )
+        elif rank > min(A.shape):
+            warnings.warn(
+                f"Equilibrium matrix is over-constrained with rank={rank}. Check constraints.",
+                OverconstrainedWarning,
+            )
+        return rank
 
+    def check_condition_number(self, A):
+        """Check the condition number of the equilibrium matrix A."""
         cond_number = np.linalg.cond(A)
         if cond_number > 1e12:
             raise IllConditionedError(
                 f"Equilibrium matrix is ill-conditioned with condition number={cond_number:.2e}. Check constraints."
             )
+        return cond_number
 
     def check_null_space(self, A):
         """Check if the equilibrium matrix A has a non-trivial null space."""
@@ -140,25 +167,44 @@ class StaticsCalculator:
             warnings.warn(
                 "System has a non-trivial null space, possibly indicating redundant constraints. Consider removing constraints.\n Continuing with solution."
             )
+        return null_space_
 
     def solve_reactions(self):
         A, b = self.assemble_equilibrium_matrix()
-        try:
-            # If A is full rank and square, use direct solution for improved performance
-            reactions = np.linalg.solve(A, b)
-            self.solver_report = {"method": "solve"}
-        except np.linalg.LinAlgError:
-            # If A is rank-deficient or not-square, use least-squares to find a solution
-            reactions, residuals, rank, s = lstsq(A, b)
 
-            self.solver_report = {
-                "method": "lstsq",
-                "residuals": residuals,
-                "rank": rank,
-                "singular_values": s,
+        def generate_report(A, b, reactions, solver):
+            solver_report = {
+                "A": A,
+                "b": b,
+                "rank": np.linalg.matrix_rank(A),
+                "condition_number": np.linalg.cond(A),
+                "null_space": null_space(A),
+                "reactions": reactions,
+                "solver": solver.__name__,
             }
+            return solver_report
 
-        return reactions.reshape((self.num_reactions, 6))
+        def direct_solver(A, b):
+            return np.linalg.solve(A, b)
+
+        def leastsquares_solver(A, b):
+            return lstsq(A, b)[0]
+
+        solvers = [direct_solver, leastsquares_solver]
+        for solver in solvers:
+            try:
+                reactions = solver(A, b).reshape((self.num_reactions, self.dof))
+                self.report = generate_report(A, b, reactions, solver)
+
+                logger.info(f"Solver {solver.__name__} succeeded.")
+
+                return reactions
+
+            except np.linalg.LinAlgError:
+                logger.warning(f"Solver {solver} failed. Trying next solver.")
+
+        logger.error("All solvers failed. No solution found.")
+        return None
 
     def print_summary(self, reactions_result, decimal_places=2):
         """
@@ -318,6 +364,8 @@ class StaticsCalculator:
         print_table_with_colored_borders(constraints_table)
         print("\nReactions Summary:")
         print_table_with_colored_borders(reactions_table)
+
+        # print(self.report)
 
     def run(self):
         reactions_result = self.solve_reactions()
