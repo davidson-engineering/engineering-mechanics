@@ -6,6 +6,9 @@ This repository provides a set of Python classes and tools to model and solve en
 
 This repository includes:
 - `BoundVector`: A class to represent vectors in 3D space with automatic alphabetical naming for ease in handling multiple vectors in calculations.
+- `Load`: A 6D BoundVector object to represent force and moment loading on a structure.
+- `Reaction`: A Load object with additional applied constraints.
+- **Statics Study**: Enables simplified workflow when working with multiple loadcases and configurations.
 - **Statics Calculations**: Utilities for constructing equilibrium matrices, solving for reactions, and ensuring stability within mechanical systems.
 - **Constraint Modeling**: Flexible constraint matrices that allow for complex and realistic modeling of supports, including coupled constraints.
 
