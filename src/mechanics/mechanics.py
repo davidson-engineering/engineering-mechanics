@@ -149,6 +149,21 @@ class BoundVector:
         return self.__class__(magnitude=-self.magnitude, location=self.location)
 
 
+@dataclass
+class Load(BoundVector):
+    magnitude: np.ndarray = field(default_factory=lambda: np.zeros(6))
+
+    def __post_init__(self):
+        super().__post_init__()
+        if self.magnitude.size < 6:
+            self.magnitude = np.pad(self.magnitude, (0, 6 - self.magnitude.size))
+        if self.magnitude.size > 6:
+            raise ValueError("Magnitude must be a 1x6 vector.")
+
+    def normal_force(self):
+        return np.linalg.norm(self.magnitude[:3])
+
+
 class Body:
     """
     A class representing a rigid body in 3D space.
@@ -242,7 +257,11 @@ class Body:
         Returns:
             np.array: Weight vector.
         """
-        assert gravity.shape == (3,), "Gravity vector must be 3D"
+        assert gravity.shape == (3,) or gravity.shape == (
+            6,
+        ), "Gravity vector must be 3D or 6D"
+        # pad gravity vector to 6D
+        gravity = np.pad(gravity, (0, 6 - gravity.size))
         return self * gravity
 
     def __mul__(self, other):
@@ -253,7 +272,7 @@ class Body:
         if isinstance(other, (list, tuple)):
             other = np.asarray(other)
         if isinstance(other, (BoundVector, np.ndarray)):
-            return BoundVector(magnitude=self.mass * other, location=self.cog)
+            return Load(magnitude=self.mass * other, location=self.cog)
 
     def __add__(self, other):
         if isinstance(other, Body):

@@ -32,8 +32,8 @@ def main():
     # Define forces and reactions here, then use StaticsCalculator to analyze
     loads = [
         Load(
-            magnitude=np.array([0, 0, -100, 0, -10, 0]),
-            location=np.array([1, 0, 0]),
+            magnitude=np.array([0, 0, -1100.776, 0, -10, 0]),
+            location=np.array([3.1053, 0, 0]),
             name="F_a",
         )
     ]
@@ -44,8 +44,8 @@ def main():
     ]
 
     calculator = ReactionSolver(loads, reactions)
-    calculator.solve()
-    calculator.print_summary(html_report_path="report.html")
+    result = calculator.run()
+    result.print_summary(html_report_path="report.html")
 
 
 if __name__ == "__main__":

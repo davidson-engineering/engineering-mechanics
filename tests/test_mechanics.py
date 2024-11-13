@@ -74,7 +74,7 @@ def test_body_weight_calculation(body):
     """Test weight calculation based on gravity."""
     weight = body._get_weight()
     expected_weight = body.mass * GRAVITY
-    assert np.allclose(weight.magnitude, expected_weight)
+    assert np.allclose(weight.magnitude[:3], expected_weight)
     assert np.allclose(weight.location, body.cog)
 
 
