@@ -2,7 +2,7 @@
 name = "engineering-mechanics"
 description = "A suite of tools to solve engineering mechanics problems"
 
-version = "0.0.1"
+version = "0.1.1"
 
 readme = "README.md"
 requires-python = ">=3.9"
