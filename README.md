@@ -50,7 +50,8 @@ reactions = [
 ]
 
 calculator = ReactionSolver(loads, reactions)
-calculator.run()
+result = calculator.run()
+result.print_summary(html_report_path="report.html")
 ```
 
 One can also print a summary table using prettytable:
