@@ -1,31 +1,17 @@
+from __future__ import annotations
 from dataclasses import dataclass, field
-from abc import abstractmethod
 from datetime import datetime
-import numpy as np
-from typing import List
-from scipy.linalg import lstsq, null_space
-import warnings
 import logging
+from typing import List
 
-from mechanics.mechanics import Load
-
+import numpy as np
+from prettytable import PrettyTable
+from simulation.result import Result
+from simulation.solver import LinearSolver
 
 logger = logging.getLogger(__name__)
 
-from mechanics import BoundVector
-from statics.result import ReactionResult
-
-
-class UnderconstrainedError(ValueError):
-    pass
-
-
-class IllConditionedError(ValueError):
-    pass
-
-
-class OverconstrainedWarning(Warning):
-    pass
+from mechanics import Load
 
 
 def skew_sym(x) -> np.array:
@@ -65,156 +51,26 @@ class Reaction(Load):
             raise ValueError("Constraint must be either a 1x6 vector or a 6x6 matrix")
 
 
-class LinearSolver:
-
-    _result_factory = ReactionResult
-
-    def __init__(self, equations: List[BoundVector], constants: List[BoundVector]):
-        self.equations = equations
-        self.constants = constants
-
-    def construct_terms(
-        self, equations: List[BoundVector], constants: List[BoundVector]
-    ) -> tuple[np.ndarray, np.ndarray]:
-        A = self.construct_coeff_matrix(equations)
-        b = self.construct_constant_vector(constants)
-        return A, b
-
-    @abstractmethod
-    def construct_coeff_matrix(self, equations: List[BoundVector]): ...
-
-    @abstractmethod
-    def construct_constant_vector(self, constants: List[BoundVector]): ...
-
-    def check_singularity(self, A: np.ndarray = None):
-        """Check if the equilibrium matrix A is singular or nearly singular."""
-        A = self.construct_coeff_matrix() if A is None else A
-        rank = self.check_rank(A)
-        condition = self.check_condition_number(A)
-        null_space = self.check_null_space(A)
-
-        return rank, condition, null_space
-
-    def check_rank(self, A: np.ndarray = None):
-        """Use rank to check if the equilibrium matrix A is singular or nearly singular."""
-
-        A = self.construct_coeff_matrix() if A is None else A
-        rank = np.linalg.matrix_rank(A)
-        if rank < min(A.shape):
-            raise UnderconstrainedError(
-                f"Equilibrium matrix is under-constrained or redundant with rank={rank}. Check constraints."
-            )
-        elif rank > min(A.shape):
-            warnings.warn(
-                f"Equilibrium matrix is over-constrained with rank={rank}. Check constraints.",
-                OverconstrainedWarning,
-            )
-        return rank
-
-    def check_condition_number(self, A: np.ndarray = None):
-        """Check the condition number of the equilibrium matrix A."""
-        A = self.construct_coeff_matrix() if A is None else A
-        cond_number = np.linalg.cond(A)
-        if cond_number > 1e12:
-            raise IllConditionedError(
-                f"Equilibrium matrix is ill-conditioned with condition number={cond_number:.2e}. Check constraints."
-            )
-        return cond_number
-
-    def check_null_space(self, A: np.ndarray = None):
-        """Check if the equilibrium matrix A has a non-trivial null space."""
-        A = self.construct_coeff_matrix() if A is None else A
-        null_space_ = null_space(A)
-        if null_space_.size > 0:
-            warnings.warn(
-                "System has a non-trivial null space, possibly indicating redundant constraints. Consider removing constraints.\n Continuing with solution."
-            )
-        return null_space_
-
-    def validate_result(self, result):
-        """Validate the reaction results by checking equilibrium."""
-        assert isinstance(result, self._result_factory)
-        b = self.construct_constant_vector(result.constants)
-        b_equations = self.construct_constant_vector(result.equations)
-        if np.allclose(b, -b_equations):
-            logger.info("Equilibrium check passed.")
-            return True
-        else:
-            logger.error("Equilibrium check failed.")
-            return False
-
-    def run(self):
-        solution, report = self.solve()
-        result = self.build_result(solution, report)
-        self.validate_result(result)
-        return result
-        # self.print_summary(reactions_result, html_report_path="report.html")
-
-    def build_result(self, solution, report=None):
-        return self._result_factory(self.equations, self.constants, solution, report)
-
-    def solve(self):
-        A = self.construct_coeff_matrix()
-        b = self.construct_constant_vector()
-        rank, condition, null_space = self.check_singularity(A)
-
-        def generate_report(solver):
-            solver_report = {
-                "coefficient_matrix": A,
-                "constant_vector": b,
-                "rank": rank,
-                "condition_number": condition,
-                "null_space": null_space,
-                "solver": solver.__name__,
-            }
-            return solver_report
-
-        def direct_solver(A, b):
-            return np.linalg.solve(A, b)
-
-        def leastsquares_solver(A, b):
-            return lstsq(A, b)[0]
-
-        solvers = [direct_solver, leastsquares_solver]
-        for solver in solvers:
-            try:
-                solution = solver(A, b).reshape((len(self.equations), len(b)))
-                report = generate_report(solver)
-                logger.info(
-                    f"Solution found using {solver.__name__}.", extra={"report": report}
-                )
-                return solution, report
-
-            except np.linalg.LinAlgError:
-                logger.warning(f"Solver {solver} failed. Trying next solver.")
-
-        logger.error("All solvers failed. No solution found.")
-        return None
-
-
 class ReactionSolver(LinearSolver):
-
-    _solution_factory = ReactionResult
 
     def __init__(
         self,
-        loads: List[BoundVector],
+        loads: List[Load],
         reactions: List[Reaction],
     ):
-        self.loads = loads
-        self.reactions = reactions
+        super().__init__(equations=reactions, constants=loads)
 
         self.check_constraints()
 
     @property
-    def constants(self):
-        return self.loads
+    def loads(self):
+        return self.constants
 
     @property
-    def equations(self):
-        return self.reactions
+    def reactions(self):
+        return self.equations
 
-    def construct_constant_vector(self, loads: List[BoundVector] = None) -> np.ndarray:
+    def construct_constant_vector(self, loads: List[Load] = None) -> np.ndarray:
         """Construct the right-hand side vector b for the equilibrium equations."""
         loads = loads or self.loads
         b = np.zeros(6)

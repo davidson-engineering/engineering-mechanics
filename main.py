@@ -22,14 +22,21 @@
 # # Configure logging using the specified logging configuration
 # dictConfig(configs["logging"])
 
-from statics import ReactionSolver, Load, Reaction
+from statics import ReactionSolver, Load, Reaction, StaticsStudy
+from mechanics import Body
 
 
 def main():
 
     import numpy as np
 
-    # Define forces and reactions here, then use StaticsCalculator to analyze
+    bodies = [
+        Body(
+            id="Cuboid",
+            mass=1,
+            inertia=np.diag([1 / 12, 1 / 12, 1 / 12]),
+        )
+    ]
     loads = [
         Load(
             magnitude=np.array([0, 0, -1100.776, 0, -10, 0]),
@@ -43,8 +50,16 @@ def main():
         ),
     ]
 
-    calculator = ReactionSolver(loads, reactions)
-    result = calculator.run()
+    # Define forces and reactions here, then use StaticsCalculator to analyze
+    study = StaticsStudy(
+        name="Example Study",
+        description="Example study with one load and one reaction",
+        reactions=reactions,
+        loads=loads,
+        bodies=bodies,
+        gravity=[0, 0, -9.81],
+    )
+    result = study.run()
     result.print_summary(html_report_path="report.html")
 
 

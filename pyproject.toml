@@ -2,7 +2,7 @@
 name = "engineering-mechanics"
 description = "A suite of tools to solve engineering mechanics problems"
 
-dynamic = ["version"]
+version = "0.0.1"
 
 readme = "README.md"
 requires-python = ">=3.9"
@@ -34,10 +34,6 @@ dependencies = [
 # Use this line if your project comprises of modules only without any ./src/* files
 #[tool.setuptools]
 #py-modules = []
-
-# If a module, then use fetch version from src/module_name/__init__.py
-[tool.setuptools.dynamic]
-version = { attr = "mechanics.__version__" }
 
 
 [project.optional-dependencies]

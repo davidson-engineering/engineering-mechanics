@@ -4,15 +4,17 @@ import numpy as np
 from mechanics.mechanics import Bodies
 from statics import (
     ReactionSolver,
-    BoundVector,
     Reaction,
     Load,
+)
+from simulation.solver import (
     UnderconstrainedError,
     IllConditionedError,
     OverconstrainedWarning,
 )
-from constants.constants import GRAVITY
+from common.constants import GRAVITY
 from mechanics import Body
+from statics.study import StaticsStudy
 
 
 @pytest.fixture
@@ -46,6 +48,17 @@ def reaction_solver(sample_loads, sample_reactions):
     return ReactionSolver(loads=sample_loads, reactions=sample_reactions)
 
 
+@pytest.fixture
+def sample_study(sample_loads, sample_reactions):
+    return StaticsStudy(
+        name="Test Study",
+        description="Test study description",
+        bodies=None,
+        loads=sample_loads,
+        reactions=sample_reactions,
+    )
+
+
 ### Test Cases
 
 
@@ -71,13 +84,15 @@ def test_solve_reactions(reaction_solver):
     )
 
 
-def test_validate_reactions_passes(reaction_solver):
+def test_validate_reactions_passes(reaction_solver, sample_study):
     """Test that validate_reactions passes when reactions match input loads."""
     # Solve reactions and validate the solution
-    solution, _ = reaction_solver.solve()
-    result = reaction_solver.build_result(solution)
+    solution, _ = sample_study.solve()
+    result = sample_study.build_result(
+        sample_study.reactions, sample_study.loads, solution
+    )
 
-    reaction_solver.validate_result(result)  # Should pass without error
+    sample_study.validate_result(result)  # Should pass without error
 
 
 def test_ill_conditioned_error(reaction_solver):
@@ -192,17 +207,26 @@ def test_statics_calculator_with_mass():
     ), "Statics calculation with mass failed"
 
 
-def _test_statics_calculator_func(loads, reactions, expected_reactions):
+def _test_statics_calculator_func(
+    reactions, loads=None, expected_reactions=None, bodies=None
+):
     # Instantiate the statics calculator
-    calculator = ReactionSolver(loads=loads, reactions=reactions)
-    solution, _ = calculator.solve()
-    result = calculator.build_result(solution)
+    study = StaticsStudy(
+        name="Test Study",
+        description="Test study description",
+        bodies=bodies,
+        loads=loads,
+        reactions=reactions,
+        gravity=GRAVITY,
+    )
+    result = study.run()
 
-    # Check each reaction matches the expected result
-    for i, expected_reaction in enumerate(expected_reactions):
-        assert np.allclose(
-            result.reactions[i].magnitude, expected_reaction
-        ), f"Reaction {i+1} does not match expected value"
+    if expected_reactions is not None:
+        # Check each reaction matches the expected result
+        for i, expected_reaction in enumerate(expected_reactions):
+            assert np.allclose(
+                result.reactions[i].magnitude, expected_reaction
+            ), f"Reaction {i+1} does not match expected value"
 
 
 def test_statics_calculator_multiple_reactions_1():
@@ -229,7 +253,9 @@ def test_statics_calculator_multiple_reactions_1():
         np.array([0, 0, 50, 0, 0, 0]),  # Reaction at the other fixed point
     ]
 
-    _test_statics_calculator_func(loads, reactions, expected_reactions)
+    _test_statics_calculator_func(
+        loads=loads, reactions=reactions, expected_reactions=expected_reactions
+    )
 
 
 def test_statics_calculator_multiple_reactions_2():
@@ -257,7 +283,9 @@ def test_statics_calculator_multiple_reactions_2():
         np.array([0, 0, 50, 0, 0, 0]),  # Reaction at the roller point
     ]
 
-    _test_statics_calculator_func(loads, reactions, expected_reactions)
+    _test_statics_calculator_func(
+        loads=loads, reactions=reactions, expected_reactions=expected_reactions
+    )
 
 
 def test_statics_calculator_multiple_reactions_3():
@@ -290,7 +318,9 @@ def test_statics_calculator_multiple_reactions_3():
         np.array([0, 0, 0, 0, 0, 0]),  # Reaction at the roller point
     ]
 
-    _test_statics_calculator_func(loads, reactions, expected_reactions)
+    _test_statics_calculator_func(
+        loads=loads, reactions=reactions, expected_reactions=expected_reactions
+    )
 
 
 def test_statics_calculator_multiple_reactions_4():
@@ -313,7 +343,7 @@ def test_statics_calculator_multiple_reactions_4():
     ]
     # Should raise an error due to underconstrained system about the x-axis
     with pytest.raises(UnderconstrainedError):
-        _test_statics_calculator_func(loads, reactions, None)
+        _test_statics_calculator_func(loads=loads, reactions=reactions)
 
     loads.append(
         Load(magnitude=np.array([0, 0, 0, 100, 0, 0]), location=np.array([0, 0, 0]))
@@ -339,18 +369,16 @@ def test_statics_calculator_multiple_reactions_4():
         np.array([0, 0, 25, 0, -25, 0]),  # Reaction at the roller point
     ]
 
-    _test_statics_calculator_func(loads, reactions, expected_reactions)
+    _test_statics_calculator_func(
+        loads=loads, reactions=reactions, expected_reactions=expected_reactions
+    )
 
 
 def test_statics_calculator_multiple_reactions_5():
 
     body_1 = Body(mass=10, cog=np.array([3, 0, 1]))
     body_2 = Body(mass=100, cog=np.array([-3, 0.5, 1]))
-    bodies = Bodies(bodies=[body_1, body_2])
-
-    assert bodies.mass == 110
-
-    loads = [bodies * GRAVITY]
+    bodies = [body_1, body_2]
 
     # Reactions: fixed, roller constraints with a mix of 1x6 and 6x6 constraints
     reactions = [
@@ -381,4 +409,6 @@ def test_statics_calculator_multiple_reactions_5():
     )
 
     # with pytest.raises(ValueError):
-    _test_statics_calculator_func(loads, reactions, expected_reactions)
+    _test_statics_calculator_func(
+        reactions=reactions, expected_reactions=expected_reactions, bodies=bodies
+    )

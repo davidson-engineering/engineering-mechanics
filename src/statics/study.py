@@ -1,27 +1,19 @@
-from abc import abstractmethod
 from datetime import datetime
-
+from typing import List, Union
+from venv import logger
+import numpy as np
+from numpy.typing import ArrayLike
 from prettytable import PrettyTable
-
-from .statics import logger
-
-
-class Result:
-
-    @property
-    @abstractmethod
-    def constants(self): ...
-
-    @property
-    @abstractmethod
-    def equations(self): ...
-
-    @abstractmethod
-    def update_equations(self, solution): ...
+from common.types import Load
+from mechanics.mechanics import Bodies, Body
+from simulation.result import Result
+from simulation.study import LinearStudy
+from statics.statics import Reaction, ReactionSolver
 
 
 class ReactionResult(Result):
     def __init__(self, reactions, loads, solution, report=None):
+        super().__init__(equations=reactions, constants=loads)
         self.loads = loads
         self.report = report
         self.reactions = self.update_equations(reactions, solution)
@@ -32,12 +24,20 @@ class ReactionResult(Result):
         return reactions
 
     @property
-    def constants(self):
-        return self.loads
+    def loads(self):
+        return self.constants
+
+    @loads.setter
+    def loads(self, value):
+        self.constants = value
 
     @property
-    def equations(self):
-        return self.reactions
+    def reactions(self):
+        return self.equations
+
+    @reactions.setter
+    def reactions(self, value):
+        self.equations = value
 
     def print_summary(self, decimal_places=2, html_report_path=None):
         """
@@ -209,3 +209,54 @@ class ReactionResult(Result):
                     "|", f"{horizontal_border_color}|{reset_color}"
                 )
                 print(colored_line)
+
+
+class StaticsStudy(LinearStudy):
+
+    _result_factory = ReactionResult
+
+    def __init__(
+        self,
+        name: str,
+        description: str,
+        reactions: List[Reaction],
+        loads: List[Load] = None,
+        bodies: List[Union[Body, Bodies]] = None,
+        study_id=None,
+        gravity: ArrayLike = [0, 0, -9.81],
+    ):
+
+        self.bodies = bodies
+        self.loads = [] if loads is None else loads
+        self.reactions = reactions
+        self.gravity = gravity
+
+        if gravity is not None and bodies:
+            self.add_gravity_loads(gravity=gravity)
+
+        super().__init__(
+            name,
+            description,
+            study_id,
+            solver=ReactionSolver(loads=self.loads, reactions=self.reactions),
+        )
+
+    def add_gravity_loads(
+        self, gravity: Union[list, ArrayLike] = [0, 0, -9.81]
+    ) -> None:
+        """Add gravity loads to the study."""
+
+        for body in self.bodies:
+            self.loads.append(
+                Load(
+                    magnitude=body.mass * np.asarray(gravity),
+                    location=body.cog,
+                    name=f"{body.id} weight",
+                )
+            )
+
+    def run(self):
+        solution, report = self.solver.solve()
+        result = self.build_result(self.reactions, self.loads, solution, report)
+        self.validate_result(result)
+        return result

@@ -35,7 +35,7 @@ For a fully constrained system with multiple reactions, you can construct an equ
 import numpy as np
 from statics import StaticsCalculator, Load, Reaction
 
-# Define forces and reactions here, then use StaticsCalculator to analyze
+# Define forces and reactions here, then use create a StaticsStudy to solve
 loads = [
     Load(
         magnitude=np.array([0, 0, -100, 0, -10, 0]),
@@ -49,15 +49,19 @@ reactions = [
     ),
 ]
 
-calculator = ReactionSolver(loads, reactions)
-result = calculator.run()
-result.print_summary(html_report_path="report.html")
+study = StaticsStudy(
+    name="Example Study",
+    description="Example study with one load and one reaction",
+    reactions=reactions,
+    loads=loads,
+)
+result = study.run()
 ```
 
 One can also print a summary table using prettytable:
 
 ```python
-reactions_result = calculator.run()
+result.print_summary()
 ```
 
 ```console
