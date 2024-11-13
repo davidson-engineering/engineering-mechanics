@@ -36,7 +36,7 @@ For a fully constrained system with multiple reactions, you can construct an equ
 
 ```python
 import numpy as np
-from statics import StaticsCalculator, Load, Reaction
+from statics import StaticsStudy, Load, Reaction
 
 # Define forces and reactions here, then use create a StaticsStudy to solve
 loads = [
