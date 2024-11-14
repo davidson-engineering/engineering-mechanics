@@ -1,5 +1,6 @@
+from dataclasses import dataclass
 from datetime import datetime
-from typing import List, Union
+from typing import Any, List, Union
 from venv import logger
 import numpy as np
 from numpy.typing import ArrayLike
@@ -9,6 +10,15 @@ from mechanics.mechanics import Bodies, Body
 from simulation.result import Result
 from simulation.study import LinearStudy
 from statics.statics import Reaction, ReactionSolver
+
+
+@dataclass
+class TableOptions:
+    headers: List[str]
+    data: List[List[Any]]
+    float_format: str = "{:.2f}"
+    vertical_border_color: str = "\033[32m"
+    horizontal_border_color: str = "\033[90m"
 
 
 class ReactionResult(Result):
@@ -73,124 +83,159 @@ class ReactionResult(Result):
                 file.write(html_content)
             logger.info(f"HTML report saved to {html_report_path}")
 
-    def _create_pretty_tables(self, float_format):
-        # Load table
-        loads_table = PrettyTable()
-        loads_table.field_names = [
-            "Load",
-            "Loc X",
-            "Loc Y",
-            "Loc Z",
-            "Fx",
-            "Fy",
-            "Fz",
-            "Mx",
-            "My",
-            "Mz",
-        ]
-        for i, load in enumerate(self.loads):
-            loc_x, loc_y, loc_z = load.location
-            fx, fy, fz, mx, my, mz = load.magnitude
-            loads_table.add_row(
+    def _create_pretty_table(self, headers, data, float_format):
+        table = PrettyTable()
+        table.field_names = headers
+        for row in data:
+            table.add_row([float_format.format(val) for val in row])
+        return table
+
+    def cconstruct_load_table(self):
+        load_table_options = TableOptions(
+            headers=[
+                "Load",
+                "Loc X",
+                "Loc Y",
+                "Loc Z",
+                "Fx",
+                "Fy",
+                "Fz",
+                "Mx",
+                "My",
+                "Mz",
+            ],
+            data=[
                 [
                     load.name if load.name else f"Load {i+1}",
-                    float_format.format(loc_x),
-                    float_format.format(loc_y),
-                    float_format.format(loc_z),
-                    float_format.format(fx),
-                    float_format.format(fy),
-                    float_format.format(fz),
-                    float_format.format(mx),
-                    float_format.format(my),
-                    float_format.format(mz),
+                    *load.location,
+                    *load.magnitude,
                 ]
-            )
+                for i, load in enumerate(self.loads)
+            ],
+        )
+        return self._create_pretty_table(**load_table_options)
 
-        # Constraints table
-        constraints_table = PrettyTable()
-        constraints_table.field_names = ["Reaction", "Constraint Matrix"]
-        for i, reaction in enumerate(self.reactions):
-            constraint_matrix_str = "\n".join(
-                [
-                    "[" + " ".join(float_format.format(val) for val in row) + "]"
-                    for row in reaction.constraint
-                ]
-            )
-            constraints_table.add_row(
+    def construct_constraints_table(self):
+        constraints_table_options = TableOptions(
+            headers=["Reaction", "Constraint Matrix"],
+            data=[
                 [
                     reaction.name if reaction.name else f"Reaction {i+1}",
-                    constraint_matrix_str,
+                    "\n".join(
+                        [
+                            "["
+                            + " ".join(float_format.format(val) for val in row)
+                            + "]"
+                            for row in reaction.constraint
+                        ]
+                    ),
                 ]
-            )
+                for i, reaction in enumerate(self.reactions)
+            ],
+        )
+        return self._create_pretty_table(**constraints_table_options)
 
-        # Reactions table
-        reactions_table = PrettyTable()
-        reactions_table.field_names = [
-            "Reaction",
-            "Loc X",
-            "Loc Y",
-            "Loc Z",
-            "Fx",
-            "Fy",
-            "Fz",
-            "Mx",
-            "My",
-            "Mz",
-        ]
-        for i, reaction in enumerate(self.reactions):
-            loc_x, loc_y, loc_z = reaction.location
-            row = [
-                reaction.name if reaction.name else f"Reaction {i+1}",
-                float_format.format(loc_x),
-                float_format.format(loc_y),
-                float_format.format(loc_z),
-            ]
-            row.extend(float_format.format(val) for val in reaction.magnitude)
-            reactions_table.add_row(row)
+    def construct_reactions_table(self):
+        reactions_table_options = TableOptions(
+            headers=[
+                "Reaction",
+                "Loc X",
+                "Loc Y",
+                "Loc Z",
+                "Fx",
+                "Fy",
+                "Fz",
+                "Mx",
+                "My",
+                "Mz",
+            ],
+            data=[
+                [
+                    reaction.name if reaction.name else f"Reaction {i+1}",
+                    *reaction.location,
+                    *reaction.magnitude,
+                ]
+                for i, reaction in enumerate(self.reactions)
+            ],
+        )
+        return self._create_pretty_table(**reactions_table_options)
 
-        return loads_table, constraints_table, reactions_table
+    # def _create_pretty_tables(self, float_format):
+    #     # Load table
+    #     loads_table = PrettyTable()
+    #     loads_table.field_names = [
+    #         "Load",
+    #         "Loc X",
+    #         "Loc Y",
+    #         "Loc Z",
+    #         "Fx",
+    #         "Fy",
+    #         "Fz",
+    #         "Mx",
+    #         "My",
+    #         "Mz",
+    #     ]
+    #     for i, load in enumerate(self.loads):
+    #         loc_x, loc_y, loc_z = load.location
+    #         fx, fy, fz, mx, my, mz = load.magnitude
+    #         loads_table.add_row(
+    #             [
+    #                 load.name if load.name else f"Load {i+1}",
+    #                 float_format.format(loc_x),
+    #                 float_format.format(loc_y),
+    #                 float_format.format(loc_z),
+    #                 float_format.format(fx),
+    #                 float_format.format(fy),
+    #                 float_format.format(fz),
+    #                 float_format.format(mx),
+    #                 float_format.format(my),
+    #                 float_format.format(mz),
+    #             ]
+    #         )
 
-    def _generate_html_report(self, loads_table, constraints_table, reactions_table):
-        # Convert PrettyTables to HTML tables
-        def pretty_table_to_html(pretty_table):
-            return pretty_table.get_html_string()
+    #     # Constraints table
+    #     constraints_table = PrettyTable()
+    #     constraints_table.field_names = ["Reaction", "Constraint Matrix"]
+    #     for i, reaction in enumerate(self.reactions):
+    #         constraint_matrix_str = "\n".join(
+    #             [
+    #                 "[" + " ".join(float_format.format(val) for val in row) + "]"
+    #                 for row in reaction.constraint
+    #             ]
+    #         )
+    #         constraints_table.add_row(
+    #             [
+    #                 reaction.name if reaction.name else f"Reaction {i+1}",
+    #                 constraint_matrix_str,
+    #             ]
+    #         )
 
-        # Convert report and validation results to HTML
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        html_report = f"""
-        <html>
-        <head>
-            <title>Statics Solver Report</title>
-            <style>
-                body {{ font-family: Arial, sans-serif; }}
-                table {{ border-collapse: collapse; width: 100%; margin: 20px 0; }}
-                th, td {{ border: 1px solid #ddd; padding: 8px; text-align: center; }}
-                th {{ background-color: #f2f2f2; }}
-                h2 {{ color: #333; }}
-                .summary {{ margin: 20px; }}
-            </style>
-        </head>
-        <body>
-            <h1>Statics Solver Report</h1>
-            <p><strong>Generated:</strong> {timestamp}</p>
+    #     # Reactions table
+    #     reactions_table = PrettyTable()
+    #     reactions_table.field_names = [
+    #         "Reaction",
+    #         "Loc X",
+    #         "Loc Y",
+    #         "Loc Z",
+    #         "Fx",
+    #         "Fy",
+    #         "Fz",
+    #         "Mx",
+    #         "My",
+    #         "Mz",
+    #     ]
+    #     for i, reaction in enumerate(self.reactions):
+    #         loc_x, loc_y, loc_z = reaction.location
+    #         row = [
+    #             reaction.name if reaction.name else f"Reaction {i+1}",
+    #             float_format.format(loc_x),
+    #             float_format.format(loc_y),
+    #             float_format.format(loc_z),
+    #         ]
+    #         row.extend(float_format.format(val) for val in reaction.magnitude)
+    #         reactions_table.add_row(row)
 
-            <div class="summary">
-                <h2>Input Loads Summary</h2>
-                {pretty_table_to_html(loads_table)}
-
-                <h2>Constraints Summary</h2>
-                {pretty_table_to_html(constraints_table)}
-
-                <h2>Reactions Summary</h2>
-                {pretty_table_to_html(reactions_table)}
-
-                <h2>Validation Results</h2>
-                <p>Combined reactions match the input loads, indicating equilibrium is achieved.</p>
-            </div>
-        </body>
-        </html>
-        """
-        return html_report
+    #     return loads_table, constraints_table, reactions_table
 
     def _print_table_with_colored_borders(
         self,
@@ -257,6 +302,8 @@ class StaticsStudy(LinearStudy):
 
     def run(self):
         solution, report = self.solver.solve()
-        result = self.build_result(self.reactions, self.loads, solution, report)
+        result = self.build_result(
+            reactions=self.reactions, loads=self.loads, solution=solution, report=report
+        )
         self.validate_result(result)
         return result

@@ -1,13 +1,10 @@
 from __future__ import annotations
-from dataclasses import dataclass, field
-from datetime import datetime
 import logging
 from typing import List
 
 import numpy as np
-from prettytable import PrettyTable
-from simulation.result import Result
 from simulation.solver import LinearSolver
+from common.types import Reaction
 
 logger = logging.getLogger(__name__)
 
@@ -31,24 +28,6 @@ def skew_sym(x) -> np.array:
     else:
         return None
     return np.array([[0, -c, b], [c, 0, -a], [-b, a, 0]])
-
-
-@dataclass
-class Reaction(Load):
-
-    constraint: np.ndarray = field(default_factory=lambda: np.eye(6))
-
-    def __post_init__(self):
-        super().__post_init__()
-        # Check if the constraint is a 1x6 vector
-        if self.constraint.shape == (6,):
-            # Convert a 1x6 vector into a 6x6 matrix
-            self.constraint = np.diag(self.constraint)
-        elif self.constraint.shape == (6, 6):
-            # Use the 6x6 matrix as-is
-            pass
-        else:
-            raise ValueError("Constraint must be either a 1x6 vector or a 6x6 matrix")
 
 
 class ReactionSolver(LinearSolver):

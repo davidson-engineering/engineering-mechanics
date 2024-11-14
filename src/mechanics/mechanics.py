@@ -174,7 +174,7 @@ class Bodies(Body):
     A class representing a collection of bodies.
     """
 
-    def __init__(self, bodies=[], *args, **kwargs) -> None:
+    def __init__(self, bodies=None, *args, **kwargs) -> None:
         """
         Initialize a Bodies collection.
 
@@ -182,7 +182,7 @@ class Bodies(Body):
             bodies (list): List of Body objects.
         """
         super().__init__(*args, **kwargs)
-        self.bodies = bodies
+        self.bodies = [] if bodies is None else bodies
         self.update_bodies()
 
     def update_bodies(self, bodies=None) -> None:

@@ -39,6 +39,8 @@ class BoundVector:
         """
         if self.name is None:
             self.name = next(self._name_generator)
+        self.magnitude = np.asarray(self.magnitude)
+        self.location = np.asarray(self.location)
 
     def unit_vector(self):
         """
@@ -114,3 +116,21 @@ class Load(BoundVector):
 
     def normal_force(self):
         return np.linalg.norm(self.magnitude[:3])
+
+
+@dataclass
+class Reaction(Load):
+
+    constraint: np.ndarray = field(default_factory=lambda: np.eye(6))
+
+    def __post_init__(self):
+        super().__post_init__()
+        # Check if the constraint is a 1x6 vector
+        if self.constraint.shape == (6,):
+            # Convert a 1x6 vector into a 6x6 matrix
+            self.constraint = np.diag(self.constraint)
+        elif self.constraint.shape == (6, 6):
+            # Use the 6x6 matrix as-is
+            pass
+        else:
+            raise ValueError("Constraint must be either a 1x6 vector or a 6x6 matrix")

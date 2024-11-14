@@ -21,8 +21,8 @@ class Study:
     def __str__(self):
         return f"{self.name} - {self.description}"
 
-    def build_result(self, coefficients, constants, solution, report=None):
-        return self._result_factory(coefficients, constants, solution, report)
+    def build_result(self, *args, **kwargs):
+        return self._result_factory(*args, **kwargs)
 
     @abstractmethod
     def validate_result(self, result): ...
