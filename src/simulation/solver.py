@@ -24,13 +24,24 @@ class OverconstrainedWarning(Warning):
     pass
 
 
+def direct_solver(A, b):
+    return np.linalg.solve(A, b)
+
+
+def leastsquares_solver(A, b):
+    return lstsq(A, b)[0]
+
+
 class LinearSolver:
 
     _result_factory = Result
 
-    def __init__(self, equations: List[np.ndarray], constants: List[np.ndarray]):
+    def __init__(
+        self, equations: List[np.ndarray] = None, constants: List[np.ndarray] = None
+    ):
         self.equations = equations
         self.constants = constants
+        self.preffered_method = None
 
     def construct_terms(
         self, equations: List[BoundVector], constants: List[BoundVector]
@@ -92,9 +103,9 @@ class LinearSolver:
 
         # self.print_summary(reactions_result, html_report_path="report.html")
 
-    def solve(self):
-        A = self.construct_coeff_matrix()
-        b = self.construct_constant_vector()
+    def solve(self, A: np.ndarray = None, b: np.ndarray = None):
+        A = self.construct_coeff_matrix() if A is None else A
+        b = self.construct_constant_vector() if b is None else b
         rank, condition, null_space = self.check_singularity(A)
 
         def generate_report(solver):
@@ -108,18 +119,25 @@ class LinearSolver:
             }
             return solver_report
 
-        def direct_solver(A, b):
-            return np.linalg.solve(A, b)
-
-        def leastsquares_solver(A, b):
-            return lstsq(A, b)[0]
-
         solvers = [direct_solver, leastsquares_solver]
+        # Reorder solvers if a valid preferred method is set
+        preferred_method = self.preffered_method
+        if preferred_method is not None:
+            if preferred_method in solvers:
+                solvers = [preferred_method] + [
+                    s for s in solvers if s != preferred_method
+                ]
+            else:
+                logger.warning(
+                    f"Preferred method {preferred_method} is not a valid solver. Ignoring."
+                )
+
         for solver in solvers:
             try:
-                solution = solver(A, b).reshape((len(self.equations), len(b)))
+                sol_shape = (int(A.shape[1] / len(b)), len(b))
+                solution = solver(A, b).reshape(sol_shape)
                 report = generate_report(solver)
-                logger.info(
+                logger.debug(
                     f"Solution found using {solver.__name__}.", extra={"report": report}
                 )
                 return solution, report
