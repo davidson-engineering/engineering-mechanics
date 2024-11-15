@@ -5,11 +5,37 @@ from common.types import Load
 from mechanics.assembly import Assembly, Part
 from mechanics.mechanics import Bodies, Body
 from simulation.study import LinearStudy
-from statics import AssemblySolver, Reaction, ReactionSolver
+from common.types import Reaction
+from statics.solver import AssemblySolver, ReactionSolver
 from statics.result import AssemblyResult, ReactionResult
 
 
 class StaticsStudy(LinearStudy):
+    """
+    A class to represent a statics study in engineering mechanics.
+
+    Attributes:
+    ----------
+    _result_factory : ReactionResult
+        A factory for creating reaction results.
+    bodies : List[Union[Body, Bodies]]
+        A list of bodies involved in the study.
+    loads : List[Load]
+        A list of loads applied to the bodies.
+    reactions : List[Reaction]
+        A list of reactions in the study.
+    gravity : ArrayLike
+        The gravity vector applied to the bodies.
+
+    Methods:
+    -------
+    __init__(name: str, description: str, reactions: List[Reaction], loads: List[Load] = None, bodies: List[Union[Body, Bodies]] = None, study_id=None, gravity: ArrayLike = [0, 0, -9.81]):
+        Initializes the statics study with the given parameters.
+    add_gravity_loads(gravity: Union[list, ArrayLike] = [0, 0, -9.81]) -> None:
+        Adds gravity loads to the study.
+    run():
+        Runs the solver to obtain the solution and report, builds the result, validates it, and returns the result.
+    """
 
     _result_factory = ReactionResult
 
@@ -21,13 +47,13 @@ class StaticsStudy(LinearStudy):
         loads: List[Load] = None,
         bodies: List[Union[Body, Bodies]] = None,
         study_id=None,
-        gravity: ArrayLike = [0, 0, -9.81],
+        gravity: ArrayLike = None,
     ):
 
         self.bodies = bodies
         self.loads = [] if loads is None else loads
         self.reactions = reactions
-        self.gravity = gravity
+        self.gravity = [0, 0, -9.81] if gravity is None else gravity
 
         if gravity is not None and bodies:
             self.add_gravity_loads(gravity=gravity)
@@ -78,7 +104,8 @@ class AssemblyStudy(LinearStudy):
         super().__init__(
             name, description, study_id, solver=AssemblySolver(self.assembly)
         )
-        if gravity is not None:
+        if gravity is None:
+            gravity = [0, 0, -9.81]
             self.add_gravity_loads(gravity=gravity)
 
     def run(self):
@@ -108,6 +135,15 @@ class AssemblyStudy(LinearStudy):
 
 
 def plot_residuals(residuals):
+    """
+    Plots the mean residuals over iterations.
+
+    Parameters:
+    residuals (list or array-like): A sequence of residual values to be plotted.
+
+    Returns:
+    None
+    """
     import matplotlib.pyplot as plt
 
     plt.plot(residuals)

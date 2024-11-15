@@ -5,11 +5,9 @@ from typing import List, Union
 import numpy as np
 from mechanics.assembly import Assembly, Connection, Part
 from simulation.solver import LinearSolver, leastsquares_solver
-from common.types import Reaction
+from common.types import Reaction, Load
 
 logger = logging.getLogger(__name__)
-
-from mechanics import Load
 
 
 def skew_sym(x) -> np.array:
@@ -32,6 +30,23 @@ def skew_sym(x) -> np.array:
 
 
 class ReactionSolver(LinearSolver):
+    """
+    A solver for determining reaction forces and moments in static equilibrium problems.
+
+    Attributes:
+        loads (List[Load]): A list of external loads applied to the system.
+        reactions (List[Reaction]): A list of reaction forces and moments.
+
+    Methods:
+        construct_constant_vector(loads: List[Load] = None) -> np.ndarray:
+            Constructs the right-hand side vector b for the equilibrium equations.
+
+        construct_coeff_matrix(reactions: List[Reaction] = None) -> np.ndarray:
+            Constructs the equilibrium matrix A for the reaction forces and moments.
+
+        check_constraints():
+            Checks the size of the constraint matrices for each reaction.
+    """
 
     def __init__(
         self,
@@ -51,7 +66,20 @@ class ReactionSolver(LinearSolver):
         return self.equations
 
     def construct_constant_vector(self, loads: List[Load] = None) -> np.ndarray:
-        """Construct the right-hand side vector b for the equilibrium equations."""
+        """
+        Construct the right-hand side vector b for the equilibrium equations.
+
+        Parameters:
+        loads (List[Load], optional): A list of Load objects representing the external loads
+                          applied to the system. If not provided, the method will
+                          use the loads attribute of the instance.
+
+        Returns:
+        np.ndarray: A 1D numpy array of length 6 representing the right-hand side vector b
+                for the equilibrium equations. The first three elements correspond to
+                the force equilibrium equations, and the last three elements correspond
+                to the moment equilibrium equations.
+        """
         loads = loads or self.loads
         b = np.zeros(6)
 
@@ -79,7 +107,19 @@ class ReactionSolver(LinearSolver):
         return b
 
     def construct_coeff_matrix(self, reactions: List[Reaction] = None) -> np.ndarray:
-        """Construct the equilibrium matrix A for the reaction forces and moments."""
+        """
+        Construct the equilibrium matrix A for the reaction forces and moments.
+
+        Parameters:
+        reactions (List[Reaction], optional): A list of Reaction objects. If not provided,
+                              the method will use the instance's reactions attribute.
+
+        Returns:
+        np.ndarray: The constructed equilibrium matrix A, where:
+                - The first three rows correspond to force equilibrium equations.
+                - The last three rows correspond to moment equilibrium equations.
+                - Each reaction contributes to 6 columns in the matrix (3 for force, 3 for moment).
+        """
 
         reactions = reactions or self.reactions
 
@@ -104,6 +144,16 @@ class ReactionSolver(LinearSolver):
         return A
 
     def check_constraints(self):
+        """
+        Checks the constraints of the reactions in the system.
+
+        This method iterates over all reactions and verifies that the constraint
+        matrix for each reaction is either a 1x6 vector or a 6x6 matrix. If a
+        constraint matrix does not meet these requirements, a ValueError is raised.
+
+        Raises:
+            ValueError: If any reaction's constraint matrix is not a 1x6 vector or a 6x6 matrix.
+        """
 
         def check_constraint_matrix_size(reaction):
             if reaction.constraint.shape not in [(6,), (6, 6)]:
@@ -116,6 +166,28 @@ class ReactionSolver(LinearSolver):
 
 
 class AssemblySolver(ReactionSolver):
+    """
+    A solver for determining the reactions in an assembly of parts.
+
+    Attributes:
+        assembly (Union[Assembly, List[Part]]): The assembly or list of parts to solve.
+        tolerance (float): The tolerance for the residuals to determine equilibrium. Default is 1e-2.
+        iteration_limit (int): The maximum number of iterations allowed. Default is 1000.
+        modifier (np.ndarray): A modifier array applied to the residuals. Default is an array of ones with length 6.
+        residuals (List[np.ndarray]): A list to store the residuals of each iteration.
+        preffered_method (Callable): The preferred method for solving the system of equations.
+
+    Methods:
+        solve_part(part: Part):
+            Solves the reactions for a single part in the assembly.
+
+        update_part(part: Part, solution: np.ndarray):
+            Updates the part with the solution from the solver and calculates residuals.
+
+        solve():
+            Iteratively solves the reactions for the entire assembly until equilibrium is reached or the iteration limit is exceeded.
+    """
+
     def __init__(
         self,
         assembly: Union[Assembly, List[Part]],
@@ -148,7 +220,6 @@ class AssemblySolver(ReactionSolver):
         residuals = []
         for reaction, conn in zip(solution, part.connections):
             residual = reaction * self.modifier
-            residuals.append(residual)
             residuals.append(residual)
             conn.master.magnitude += residual
             conn.slave.magnitude -= residual

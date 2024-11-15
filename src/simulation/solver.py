@@ -33,6 +33,49 @@ def leastsquares_solver(A, b):
 
 
 class LinearSolver:
+    """
+    A class to represent a linear solver for systems of linear equations.
+
+    Attributes
+    ----------
+    _result_factory : Result
+        A factory for creating result objects.
+    equations : List[np.ndarray]
+        A list of numpy arrays representing the equations.
+    constants : List[np.ndarray]
+        A list of numpy arrays representing the constants.
+    preferred_method : callable
+        The preferred method for solving the system of equations.
+
+    Methods
+    -------
+    __init__(equations: List[np.ndarray] = None, constants: List[np.ndarray] = None)
+        Initializes the LinearSolver with optional equations and constants.
+
+    construct_terms(equations: List[BoundVector], constants: List[BoundVector]) -> tuple[np.ndarray, np.ndarray]
+        Constructs the coefficient matrix and constant vector from the given equations and constants.
+
+    construct_coeff_matrix(equations: List[BoundVector])
+        Abstract method to construct the coefficient matrix from the given equations.
+
+    construct_constant_vector(constants: List[BoundVector])
+        Abstract method to construct the constant vector from the given constants.
+
+    check_singularity(A: np.ndarray = None)
+        Checks if the equilibrium matrix A is singular or nearly singular.
+
+    check_rank(A: np.ndarray = None)
+        Checks the rank of the equilibrium matrix A to determine if it is singular or nearly singular.
+
+    check_condition_number(A: np.ndarray = None)
+        Checks the condition number of the equilibrium matrix A.
+
+    check_null_space(A: np.ndarray = None)
+        Checks if the equilibrium matrix A has a non-trivial null space.
+
+    solve(A: np.ndarray = None, b: np.ndarray = None)
+        Solves the system of linear equations using available solvers and returns the solution and a report.
+    """
 
     _result_factory = Result
 
@@ -41,7 +84,7 @@ class LinearSolver:
     ):
         self.equations = equations
         self.constants = constants
-        self.preffered_method = None
+        self.preferred_method = None
 
     def construct_terms(
         self, equations: List[BoundVector], constants: List[BoundVector]
@@ -58,7 +101,7 @@ class LinearSolver:
 
     def check_singularity(self, A: np.ndarray = None):
         """Check if the equilibrium matrix A is singular or nearly singular."""
-        A = self.construct_coeff_matrix() if A is None else A
+        A = self.construct_coeff_matrix(self.equations) if A is None else A
         rank = self.check_rank(A)
         condition = self.check_condition_number(A)
         null_space = self.check_null_space(A)
@@ -68,7 +111,7 @@ class LinearSolver:
     def check_rank(self, A: np.ndarray = None):
         """Use rank to check if the equilibrium matrix A is singular or nearly singular."""
 
-        A = self.construct_coeff_matrix() if A is None else A
+        A = self.construct_coeff_matrix(self.equations) if A is None else A
         rank = np.linalg.matrix_rank(A)
         if rank < min(A.shape):
             raise UnderconstrainedError(
@@ -83,7 +126,7 @@ class LinearSolver:
 
     def check_condition_number(self, A: np.ndarray = None):
         """Check the condition number of the equilibrium matrix A."""
-        A = self.construct_coeff_matrix() if A is None else A
+        A = self.construct_coeff_matrix(self.equations) if A is None else A
         cond_number = np.linalg.cond(A)
         if cond_number > 1e12:
             raise IllConditionedError(
@@ -105,7 +148,7 @@ class LinearSolver:
 
     def solve(self, A: np.ndarray = None, b: np.ndarray = None):
         A = self.construct_coeff_matrix() if A is None else A
-        b = self.construct_constant_vector() if b is None else b
+        b = self.construct_constant_vector(self.constants) if b is None else b
         rank, condition, null_space = self.check_singularity(A)
 
         def generate_report(solver):
@@ -121,7 +164,7 @@ class LinearSolver:
 
         solvers = [direct_solver, leastsquares_solver]
         # Reorder solvers if a valid preferred method is set
-        preferred_method = self.preffered_method
+        preferred_method = self.preferred_method
         if preferred_method is not None:
             if preferred_method in solvers:
                 solvers = [preferred_method] + [
