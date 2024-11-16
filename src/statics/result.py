@@ -288,3 +288,6 @@ class AssemblyResult(ReactionResult):
 
     def extract_loads(self, assembly: Assembly = None) -> List[Load]:
         return self._extract_attr_from_assembly("loads", assembly)
+
+    def test(self):
+        pass
