@@ -6,8 +6,8 @@ import numpy as np
 from scipy.linalg import lstsq, null_space
 
 
-from common.types import BoundVector
-from simulation.result import Result
+from base.vector import BoundVector
+from base.result import Result
 
 logger = logging.getLogger(__name__)
 
@@ -146,7 +146,9 @@ class LinearSolver:
 
         # self.print_summary(reactions_result, html_report_path="report.html")
 
-    def solve(self, A: np.ndarray = None, b: np.ndarray = None):
+    def solve(
+        self, A: np.ndarray = None, b: np.ndarray = None
+    ) -> tuple[np.ndarray, dict]:
         A = self.construct_coeff_matrix() if A is None else A
         b = self.construct_constant_vector(self.constants) if b is None else b
         rank, condition, null_space = self.check_singularity(A)

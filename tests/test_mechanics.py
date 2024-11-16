@@ -1,6 +1,7 @@
 import pytest
 import numpy as np
 from scipy.spatial.transform import Rotation as R
+
 from mechanics.mechanics import Body, Bodies, skew_sym
 
 GRAVITY = np.array([0, 0, -9.81])

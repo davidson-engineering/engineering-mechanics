@@ -1,8 +1,8 @@
 from typing import List, Union
 
 import numpy as np
-from mechanics import Bodies, Body
-from common.types import Load, Reaction
+from mechanics.mechanics import Bodies, Body
+from base.vector import Load, Reaction
 
 
 class Connection(list):
@@ -30,6 +30,7 @@ class Part(Bodies):
         super().__init__(id=id, bodies=bodies)
         self.connections = [] if connections is None else connections
         self.loads = [] if loads is None else loads
+        self.reactions = [connection.master for connection in self.connections]
 
     def __repr__(self):
         return f"Part(id={self.id}, bodies={len(self.bodies)}, connections={len(self.connections)}, loads={len(self.loads)})"
@@ -38,6 +39,7 @@ class Part(Bodies):
 class Assembly:
     def __init__(self, parts: List[Part]):
         self.parts = parts
+        self.loads = [load for part in self.parts for load in part.loads]
 
     def construct_terms(self):
         pass

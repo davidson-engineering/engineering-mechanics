@@ -27,8 +27,11 @@ classifiers = [
 dependencies = [
   "python-config-loader @ git+https://github.com/davidson-engineering/python-config-loader.git",
   "scipy>=1",
-  "numpy>=2",
+  "numpy>=1",
   "prettytable>=3",
+  "moderngl>=2",
+  "moderngl-window>=2",
+  "matplotlib>=3",
 ]
 
 # Use this line if your project comprises of modules only without any ./src/* files

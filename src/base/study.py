@@ -1,8 +1,8 @@
 from abc import abstractmethod
 import logging
 import numpy as np
-from simulation.result import Result
-from simulation.solver import LinearSolver
+
+from base.result import Result
 
 logger = logging.getLogger("simulation")
 

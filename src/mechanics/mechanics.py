@@ -10,10 +10,10 @@
 
 import numpy as np
 from scipy.spatial.transform import Rotation as R
-from common.types import BoundVector, Load
-from common.constants import GRAVITY
 import logging
 
+from base.vector import BoundVector, Load
+from common.constants import GRAVITY
 
 logger = logging.getLogger(__name__)
 

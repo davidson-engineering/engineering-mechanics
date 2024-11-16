@@ -7,7 +7,7 @@ from statics import (
     Reaction,
     Load,
 )
-from simulation.solver import (
+from base.solver import (
     UnderconstrainedError,
     IllConditionedError,
     OverconstrainedWarning,

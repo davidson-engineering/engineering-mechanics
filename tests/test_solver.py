@@ -1,8 +1,9 @@
 import pytest
 import numpy as np
-from mechanics.assembly import Assembly, Part, Connection
+
+from base.assembly import Assembly, Part, Connection
 from mechanics.mechanics import Rod, Disc
-from common.types import Load, Reaction
+from base.vector import Load, Reaction
 from statics.solver import AssemblySolver
 
 
@@ -34,7 +35,7 @@ def test_assembly_solver_initialization():
     solver = AssemblySolver(assembly)
 
     assert solver.assembly == assembly
-    assert solver.tolerance == 1e-2
+    assert solver.tolerance == 1e-6
     assert solver.iteration_limit == 1000
     assert np.array_equal(solver.modifier, np.ones(6))
 

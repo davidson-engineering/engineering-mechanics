@@ -1,8 +1,8 @@
 from typing import List, Union
 
-from common.types import Load
+from base.vector import Load
 from mechanics.mechanics import Bodies, Body
-from simulation.study import LinearStudy
+from base.study import LinearStudy
 
 
 class MechanicsStudy(LinearStudy):

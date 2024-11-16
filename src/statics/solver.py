@@ -3,9 +3,9 @@ import logging
 from typing import List, Union
 
 import numpy as np
-from mechanics.assembly import Assembly, Connection, Part
-from simulation.solver import LinearSolver, leastsquares_solver
-from common.types import Reaction, Load
+from base.assembly import Assembly, Connection, Part
+from base.solver import LinearSolver, leastsquares_solver
+from base.vector import Reaction, Load
 
 logger = logging.getLogger(__name__)
 
@@ -190,8 +190,8 @@ class AssemblySolver(ReactionSolver):
 
     def __init__(
         self,
-        assembly: Union[Assembly, List[Part]],
-        tolerance: float = 1e-2,
+        assembly: Union[Assembly, List[Part]] = None,
+        tolerance: float = 1e-6,
         iteration_limit: int = 1000,
         modifier: np.ndarray = np.ones(6),
     ):
@@ -202,10 +202,22 @@ class AssemblySolver(ReactionSolver):
         self.iteration_limit = iteration_limit
         self.residuals = []
         self.modifier = modifier
-        self.preffered_method = leastsquares_solver
+        self.preferred_method = leastsquares_solver
+
+    def _extract_attr_from_assembly(self, attr: str, assembly: Assembly) -> list:
+        assembly = self.assembly if assembly is None else assembly
+        return [item for part in assembly.parts for item in getattr(part, attr)]
+
+    def extract_reactions(self, assembly: Assembly = None) -> List[Reaction]:
+        return self._extract_attr_from_assembly("reactions", assembly)
+
+    def extract_loads(self, assembly: Assembly = None) -> List[Load]:
+        return self._extract_attr_from_assembly("loads", assembly)
 
     def solve_part(self, part: Part):
+        # Equations are defined by constraints of connections
         equations = [conn.master for conn in part.connections]
+        # Constants include loads and master connection reactions
         constants = part.loads + [conn.master for conn in part.connections]
         A = self.construct_coeff_matrix(equations)
         b = self.construct_constant_vector(constants)
@@ -226,9 +238,27 @@ class AssemblySolver(ReactionSolver):
 
         self.residuals.append(np.mean(np.abs(residuals), axis=0))
 
-    def solve(self):
+    def build_report(self):
+        return {
+            "number_parts": len(self.assembly.parts),
+            "number_reactions": len(self.extract_reactions(self.assembly)),
+            "number_loads": len(self.assembly.loads),
+            "number_of_iterations": len(self.residuals),
+            "residuals": self.residuals,
+            "tolerance": self.tolerance,
+            "iteration_limit": self.iteration_limit,
+        }
+
+    def solve(
+        self, assembly: Union[Assembly, List[Part]] = None
+    ) -> tuple[Assembly, dict]:
+        if assembly is None:
+            assembly = self.assembly
+            logger.warning(
+                "No assembly provided to call to AssemblySolver.solve(). Using the instance's assembly."
+            )
         while True:
-            for part in self.assembly.parts:
+            for part in assembly.parts:
                 self.solve_part(part)
             if np.mean(self.residuals[-1]) < self.tolerance:
                 logger.info(
@@ -238,7 +268,7 @@ class AssemblySolver(ReactionSolver):
                         "tolerance": self.tolerance,
                     },
                 )
-                break
+                return assembly
             elif len(self.residuals) > self.iteration_limit:
                 logger.error(
                     "Iteration limit reached.", extra={"residuals": self.residuals[-1]}

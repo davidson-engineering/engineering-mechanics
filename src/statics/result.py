@@ -3,7 +3,9 @@ from typing import Any, List
 
 from prettytable import PrettyTable
 
-from simulation.result import Result
+from base.assembly import Assembly
+from base.result import Result
+from base.vector import Load, Reaction
 from statics.solver import logger
 
 
@@ -12,8 +14,8 @@ class TableOptions:
     headers: List[str]
     data: List[List[Any]]
     float_format: str = "{:.2f}"
-    vertical_border_color: str = "\033[32m"
-    horizontal_border_color: str = "\033[90m"
+    # vertical_border_color: str = "\033[32m"
+    # horizontal_border_color: str = "\033[90m"
 
 
 class ReactionResult(Result):
@@ -57,17 +59,17 @@ class ReactionResult(Result):
         float_format = f"{{:.{decimal_places}g}}"
 
         # Create PrettyTables for console printout
-        loads_table, constraints_table, reactions_table = self._create_pretty_tables(
-            float_format
-        )
+        loads_table = self.construct_load_table()
+        constraints_table = self.construct_constraints_table()
+        reactions_table = self.construct_reactions_table()
 
         # Print tables to console with color
         print("Input loads Summary:")
-        self._print_table_with_colored_borders(loads_table)
+        print(loads_table)
         print("\nConstraints Summary:")
-        self._print_table_with_colored_borders(constraints_table)
+        print(constraints_table)
         print("\nReactions Summary:")
-        self._print_table_with_colored_borders(reactions_table)
+        print(reactions_table)
 
         # Generate HTML report if a path is provided
         if html_report_path:
@@ -82,16 +84,23 @@ class ReactionResult(Result):
         table = PrettyTable()
         table.field_names = headers
         for row in data:
-            table.add_row([float_format.format(val) for val in row])
+            row_fmt = []
+            for val in row:
+                try:
+                    val = float_format.format(val)
+                except ValueError:
+                    pass
+                row_fmt.append(val)
+            table.add_row(row_fmt)
         return table
 
-    def cconstruct_load_table(self):
+    def construct_load_table(self):
         load_table_options = TableOptions(
             headers=[
                 "Load",
-                "Loc X",
-                "Loc Y",
-                "Loc Z",
+                "X",
+                "Y",
+                "Z",
                 "Fx",
                 "Fy",
                 "Fz",
@@ -107,10 +116,13 @@ class ReactionResult(Result):
                 ]
                 for i, load in enumerate(self.loads)
             ],
+            float_format="{:.2f}",
         )
-        return self._create_pretty_table(**load_table_options)
+        return self._create_pretty_table(**vars(load_table_options))
 
     def construct_constraints_table(self):
+        float_format = f"{{:2g}}"
+
         constraints_table_options = TableOptions(
             headers=["Reaction", "Constraint Matrix"],
             data=[
@@ -123,20 +135,22 @@ class ReactionResult(Result):
                             + "]"
                             for row in reaction.constraint
                         ]
+                        + ["\n"]
                     ),
                 ]
                 for i, reaction in enumerate(self.reactions)
             ],
+            float_format=float_format,
         )
-        return self._create_pretty_table(**constraints_table_options)
+        return self._create_pretty_table(**vars(constraints_table_options))
 
     def construct_reactions_table(self):
         reactions_table_options = TableOptions(
             headers=[
                 "Reaction",
-                "Loc X",
-                "Loc Y",
-                "Loc Z",
+                "X",
+                "Y",
+                "Z",
                 "Fx",
                 "Fy",
                 "Fz",
@@ -152,8 +166,9 @@ class ReactionResult(Result):
                 ]
                 for i, reaction in enumerate(self.reactions)
             ],
+            float_format="{:.2f}",
         )
-        return self._create_pretty_table(**reactions_table_options)
+        return self._create_pretty_table(**vars(reactions_table_options))
 
     # def _create_pretty_tables(self, float_format):
     #     # Load table
@@ -234,13 +249,14 @@ class ReactionResult(Result):
 
     def _print_table_with_colored_borders(
         self,
-        table,
+        table: str,
         vertical_border_color="\033[32m",
         horizontal_border_color="\033[90m",
-    ):
+    ) -> str:
         """Helper function to print table with green horizontal borders only."""
         reset_color = "\033[0m"
         table_str = table.get_string()
+        table_new = []
         for line in table_str.splitlines():
             if set(line.strip()) <= {"+", "-", "="}:
                 print(f"{vertical_border_color}{line}{reset_color}")
@@ -248,10 +264,27 @@ class ReactionResult(Result):
                 colored_line = line.replace(
                     "|", f"{horizontal_border_color}|{reset_color}"
                 )
-                print(colored_line)
+                table_new.append(colored_line)
+
+        return table_new
 
 
-class AssemblyResult(Result):
+class AssemblyResult(ReactionResult):
 
-    def update_equations(self, solution):
-        pass
+    def __init__(self, assembly: Assembly, solution: List[float]):
+
+        self.input = assembly
+        self.solution = solution
+
+        self.loads = self.extract_loads(solution)
+        self.reactions = self.extract_reactions(solution)
+
+    def _extract_attr_from_assembly(self, attr: str, assembly: Assembly) -> list:
+        assembly = self.assembly if assembly is None else assembly
+        return [item for part in assembly.parts for item in getattr(part, attr)]
+
+    def extract_reactions(self, assembly: Assembly = None) -> List[Reaction]:
+        return self._extract_attr_from_assembly("reactions", assembly)
+
+    def extract_loads(self, assembly: Assembly = None) -> List[Load]:
+        return self._extract_attr_from_assembly("loads", assembly)

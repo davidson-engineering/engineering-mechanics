@@ -1,11 +1,12 @@
+from copy import deepcopy
 from typing import Any, List, Union
 import numpy as np
 from numpy.typing import ArrayLike
-from common.types import Load
-from mechanics.assembly import Assembly, Part
+
+from base.assembly import Assembly, Part
 from mechanics.mechanics import Bodies, Body
-from simulation.study import LinearStudy
-from common.types import Reaction
+from base.study import LinearStudy
+from base.vector import Reaction, Load
 from statics.solver import AssemblySolver, ReactionSolver
 from statics.result import AssemblyResult, ReactionResult
 
@@ -98,25 +99,21 @@ class AssemblyStudy(LinearStudy):
         description,
         assembly,
         study_id=None,
-        gravity: ArrayLike = [0, 0, -9.81],
     ):
         self.assembly = assembly
-        super().__init__(
-            name, description, study_id, solver=AssemblySolver(self.assembly)
-        )
-        if gravity is None:
-            gravity = [0, 0, -9.81]
-            self.add_gravity_loads(gravity=gravity)
+        super().__init__(name, description, study_id, solver=AssemblySolver())
 
-    def run(self):
-        self.solver.solve()
-        print(self.assembly)
+    def run(self) -> AssemblyResult:
+        # Copy the assembly to avoid modifying the original
+        self.add_gravity_loads()
+        assembly_solution = deepcopy(self.assembly)
+        self.solver.solve(assembly_solution)
+        result = self.build_result(assembly=self.assembly, solution=assembly_solution)
+        return result
 
-    def add_gravity_loads(
-        self, gravity: Union[list, ArrayLike] = [0, 0, -9.81]
-    ) -> None:
+    def add_gravity_loads(self, gravity: Union[list, ArrayLike] = None) -> None:
         """Add gravity loads to the study."""
-
+        gravity = [0, 0, -9.81] if gravity is None else gravity
         for part in self.assembly.parts:
             if isinstance(part.bodies, list):
                 bodies = Bodies(bodies=part.bodies)
@@ -155,7 +152,7 @@ def plot_residuals(residuals):
 
 if __name__ == "__main__":
     from mechanics import Rod, Disc
-    from mechanics.assembly import Connection
+    from base.assembly import Connection
     import logging
 
     logging.basicConfig(level=logging.INFO)
@@ -189,8 +186,9 @@ if __name__ == "__main__":
         name="Example Study",
         description="Example study with one load and one reaction",
         assembly=assembly,
-        gravity=[0, 0, -9.81],
     )
 
-    study.run()
+    result = study.run()
+    result.print_summary()
+
     plot_residuals(study.solver.residuals)
