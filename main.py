@@ -57,7 +57,6 @@ def main():
         reactions=reactions,
         loads=loads,
         bodies=bodies,
-        gravity=[0, 0, -9.81],
     )
     result = study.run()
     result.print_summary(html_report_path="report.html")

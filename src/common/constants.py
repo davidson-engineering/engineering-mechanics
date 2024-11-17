@@ -16,3 +16,9 @@ UNIT_CONVERSIONS = {
     "Nmm": 1e-3,  # Newton-millimeters to Newton-meters
     "kNm": 1e3,  # kilonewton-meters to Newton-meters
 }
+
+PLOT_AXES = [
+    {"axis": "X", "direction": [1, 0, 0], "normal": [0, 1, 0]},  # Rotation about X
+    {"axis": "Y", "direction": [0, 1, 0], "normal": [0, 0, 1]},  # Rotation about Y
+    {"axis": "Z", "direction": [0, 0, 1], "normal": [1, 0, 0]},  # Rotation about Z
+]
