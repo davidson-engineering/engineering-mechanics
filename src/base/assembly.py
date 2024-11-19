@@ -3,6 +3,7 @@ from typing import List, Union
 import numpy as np
 from mechanics.mechanics import Bodies, Body
 from base.vector import Load, Reaction
+from scipy.spatial import ConvexHull
 
 
 class Connection(list):
@@ -23,7 +24,7 @@ class Part(Bodies):
     def __init__(
         self,
         id,
-        bodies: List[Union[Bodies, Body]],
+        bodies: Union[Bodies, Body],
         connections: List[Connection] = None,
         loads: List[Load] = None,
     ):
@@ -31,9 +32,29 @@ class Part(Bodies):
         self.connections = [] if connections is None else connections
         self.loads = [] if loads is None else loads
         self.reactions = [connection.master for connection in self.connections]
+        self.nodes = [reaction.location for reaction in self.reactions]
+        # self.faces = self.generate_faces()
 
     def __repr__(self):
         return f"Part(id={self.id}, bodies={len(self.bodies)}, connections={len(self.connections)}, loads={len(self.loads)})"
+
+    def updates_nodes(self, nodes: List[np.ndarray] = None):
+        self.nodes = (
+            [reaction.location for reaction in self.reactions]
+            if nodes is None
+            else nodes
+        )
+
+    def generate_faces(self):
+        """
+        Automatically generates faces using the ConvexHull algorithm.
+
+        Returns:
+            List[List[int]]: A list of triangular faces, where each face is defined by three node indices.
+        """
+        nodes_array = np.array(self.nodes)
+        hull = ConvexHull(nodes_array)
+        return hull.simplices
 
 
 class Assembly:

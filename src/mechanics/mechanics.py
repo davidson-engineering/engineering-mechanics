@@ -8,6 +8,7 @@
 """Module for modeling collections of bodies to solve engineering mechanics problems."""
 # ---------------------------------------------------------------------------
 
+from typing import List
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 import logging
@@ -58,9 +59,7 @@ class Body:
 
     no_bodies = 1
 
-    def __init__(
-        self, id=None, mass=1.0, cog=np.zeros(3), inertia=np.zeros(3), rot=None
-    ) -> None:
+    def __init__(self, id=None, mass=1.0, cog=None, inertia=None, rot=None) -> None:
         """
         Initialize a Body object.
 
@@ -73,11 +72,11 @@ class Body:
         """
         self.id = Body.no_bodies if id is None else id
         self.mass = mass
-        self.cog = np.asarray(cog)
+        self.cog = np.zeros(3) if cog is None else np.asarray(cog)
         self.inertia = (
             np.diag(inertia)
             if (np.array(inertia).shape == (1, 3)) or (np.array(inertia).shape == (3,))
-            else np.asarray(inertia)
+            else (np.asarray(inertia) if inertia is not None else np.zeros((3, 3)))
         )
 
         if rot is not None:
@@ -174,7 +173,7 @@ class Bodies(Body):
     A class representing a collection of bodies.
     """
 
-    def __init__(self, bodies=None, *args, **kwargs) -> None:
+    def __init__(self, bodies: List[Body] = None, *args, **kwargs) -> None:
         """
         Initialize a Bodies collection.
 

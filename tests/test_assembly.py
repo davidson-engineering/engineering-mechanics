@@ -96,3 +96,24 @@ def test_extract_reactions(assembly):
 
     assert len(loads) == 1
     assert loads[0].name == "disc_load"
+
+
+def test_plot_assembly(assembly):
+
+    from visual.plotly_plot import plot_loads_3d
+
+    study = AssemblyStudy(
+        name="Test Study",
+        description="Test study with one load and one reaction",
+        assembly=assembly,
+    )
+
+    study.add_gravity_loads(gravity=[0, 0, -9.81])
+
+    solution = study.run()
+
+    plot_loads_3d(
+        loads=solution.loads,
+        parts=solution.solution.parts,
+        scale=1,
+    )
