@@ -1,0 +1,41 @@
+name: Cabinet on frictionless casters pushed to an acceleration
+description: |
+  A 40 kg cabinet (0.6 m wide, 1.2 m tall, uniform, G at (0, 0.6)) rolls on
+  frictionless casters at A (-0.3, 0) and B (0.3, 0). A horizontal push P
+  at (-0.3, 0.9) gives it an acceleration of 2 m/s^2 in +x. Find P and the
+  caster reactions (inverse dynamics, pure translation).
+
+  Hand derivation:
+    x:  P = m a = 40(2) = 80 N
+    y:  NA + NB = m g = 392.266 N
+    moments about G (no rotation, so sum M_G = 0):
+      -0.3 NA + 0.3 NB - 0.3 P = 0  ->  NB - NA = P = 80 N
+    ->  NA = 156.133 N,  NB = 236.133 N
+
+analysis: planar
+units: SI
+gravity: -y
+
+points:
+  A: [-0.3, 0]
+  B: [0.3, 0]
+  H: [-0.3, 0.9]
+
+bodies:
+  cabinet:
+    shapes:
+      - {type: box, mass: 40 kg, size: [0.6, 1.2, 0.4], center: [0, 0.6]}
+    motion:
+      acceleration: [2, 0]
+    loads:
+      - {unknown: P, direction: +x, at: H}
+
+supports:
+  A: {type: contact, at: A, normal: +y}
+  B: {type: contact, at: B, normal: +y}
+
+checks:
+  - {target: cabinet.mass, expect: 40 kg, tolerance: 0.001%}
+  - {target: P.P, expect: 80 N, tolerance: 0.001%}
+  - {target: A.N, expect: 156.133 N, tolerance: 0.001%}
+  - {target: B.N, expect: 236.133 N, tolerance: 0.001%}

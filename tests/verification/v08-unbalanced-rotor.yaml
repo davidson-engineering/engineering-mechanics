@@ -1,0 +1,53 @@
+name: Dynamic bearing loads of an unbalanced rotor
+description: |
+  A light shaft along x is carried by a ball bearing at A (0,0,0) and a
+  radial bearing at B (0.6,0,0). At this instant it spins at 100 rad/s
+  about +x and is speeding up at 200 rad/s^2. It carries two small masses:
+  m1 = 0.2 kg at (0.2, 0.05, 0) and m2 = 0.3 kg at (0.45, 0, 0.04).
+  Gravity acts -z. A drive couple Tq about +x is solved for.
+
+  Hand derivation (particles, a_i = alpha x r_i + w x (w x r_i)):
+    m1 a1 = 0.2 (0, -500, 10)  = (0, -100,  2  ) N
+    m2 a2 = 0.3 (0, -8, -400)  = (0, -2.4, -120) N
+    sum r_i x m_i a_i about A  = (0.196, 53.6, -21.08) N*m
+    weights 1.96133 N and 2.941995 N (-z); their moments about A
+      = (-0.0980665, 1.7161638, 0) N*m
+    Mx:  Tq - 0.0980665 = 0.196               ->  Tq = 0.2940665 N*m
+         (= I_xx alpha + gravity torque, I_xx = 0.2(0.05^2) + 0.3(0.04^2))
+    My: -0.6 Bz + 1.7161638 = 53.6            ->  Bz = -86.47306 N
+    Mz:  0.6 By = -21.08                      ->  By = -35.13333 N
+    Fy:  Ay + By = -102.4                     ->  Ay = -67.26667 N
+    Fz:  Az + Bz - 4.903325 = -118            ->  Az = -26.62361 N
+    Fx:  Ax = 0
+
+units: SI
+gravity: -z
+
+points:
+  A: [0, 0, 0]
+  B: [0.6, 0, 0]
+
+bodies:
+  rotor:
+    outline: [A, B]
+    shapes:
+      - {type: point, name: m1, mass: 0.2 kg, at: [0.2, 0.05, 0]}
+      - {type: point, name: m2, mass: 0.3 kg, at: [0.45, 0, 0.04]}
+    motion:
+      angular_velocity: [100, 0, 0]
+      angular_acceleration: [200, 0, 0]
+      pivot: A
+    loads:
+      - {unknown: Tq, axis: +x, at: A}
+
+supports:
+  A: {type: ball, at: A}
+  B: {type: custom, at: B, constrain: [Fy, Fz]}
+
+checks:
+  - {target: Tq.Tq, expect: 0.2940665 N*m, tolerance: 0.001%}
+  - {target: A.Fx, expect: 0 N, tolerance: 1e-9 N}
+  - {target: A.Fy, expect: -67.26666667 N, tolerance: 0.001%}
+  - {target: A.Fz, expect: -26.62361458 N, tolerance: 0.001%}
+  - {target: B.Fy, expect: -35.13333333 N, tolerance: 0.001%}
+  - {target: B.Fz, expect: -86.47306042 N, tolerance: 0.001%}

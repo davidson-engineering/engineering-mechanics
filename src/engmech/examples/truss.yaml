@@ -1,0 +1,51 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/davidson-engineering/engineering-mechanics/main/schema/engmech.schema.json
+name: Planar truss (method of joints)
+description: |
+  A five-joint truss spanning 8 m with a 12 kN load at the bottom middle.
+  Each joint is a particle and each member a link, so the solver works
+  exactly like the method of joints.
+
+  Hand check:
+    joint A:  6 + T_AD (3/√13) = 0      ->  T_AD = -2√13 = -7.211 kN (compression)
+              T_AB + T_AD (2/√13) = 0   ->  T_AB = 4 kN (tension)
+    joint D:  T_BD = -T_AD = 7.211 kN,  T_DE = -8 kN
+
+analysis: planar
+units: {length: m, force: kN}
+
+points:
+  A: [0, 0]
+  B: [4, 0]
+  C: [8, 0]
+  D: [2, 3]
+  E: [6, 3]
+
+bodies:
+  A: {particle: true}
+  B:
+    particle: true
+    loads: [{name: P, force: [0, -12], at: B}]
+  C: {particle: true}
+  D: {particle: true}
+  E: {particle: true}
+
+supports:
+  RA: {type: pin, body: A, at: A}
+  RC: {type: roller, body: C, at: C, normal: +y}
+
+joints:
+  AB: {type: link, bodies: [A, B], ends: [A, B]}
+  BC: {type: link, bodies: [B, C], ends: [B, C]}
+  AD: {type: link, bodies: [A, D], ends: [A, D]}
+  BD: {type: link, bodies: [B, D], ends: [B, D]}
+  BE: {type: link, bodies: [B, E], ends: [B, E]}
+  CE: {type: link, bodies: [C, E], ends: [C, E]}
+  DE: {type: link, bodies: [D, E], ends: [D, E]}
+
+checks:
+  - {target: AB.T, expect: 4 kN}
+  - {target: AD.T, expect: -7.2111 kN}
+  - {target: BD.T, expect: 7.2111 kN}
+  - {target: DE.T, expect: -8 kN}
+  - {target: CE.T, expect: -7.2111 kN}
+  - {target: RC.N, expect: 6 kN}

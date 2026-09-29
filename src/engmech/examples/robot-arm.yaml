@@ -1,0 +1,43 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/davidson-engineering/engineering-mechanics/main/schema/engmech.schema.json
+name: Two-link arm holding a payload
+description: |
+  A planar two-link arm holds a 5 kg payload still. Both joints are
+  motor-driven; find the holding torques.
+
+  Hand check (moments of the weights):
+    elbow     τ_E = g cos15° (2 × 0.2 + 5 × 0.4) = 22.734 N·m
+    shoulder  τ_S = g (4 × 0.17678 + 2 × 0.54674 + 5 × 0.73992) = 53.939 N·m
+
+analysis: planar
+units: SI
+gravity: -y
+
+parameters:
+  L1: 0.5 m
+  L2: 0.4 m
+  q1: 45 deg      # shoulder angle from horizontal
+  q2: -15 deg     # forearm angle from horizontal
+
+points:
+  S: [0, 0]
+  E: [L1*cos(q1), L1*sin(q1)]
+  W: [L1*cos(q1) + L2*cos(q2), L1*sin(q1) + L2*sin(q2)]
+
+bodies:
+  upper:
+    shapes: [{type: rod, mass: 4 kg, start: S, end: E}]
+  forearm:
+    shapes:
+      - {type: rod, mass: 2 kg, start: E, end: W}
+      - {type: point, name: payload, mass: 5 kg, at: W}
+
+supports:
+  shoulder: {type: pin, body: upper, at: S, actuated: true}
+
+joints:
+  elbow: {type: pin, bodies: [upper, forearm], at: E, actuated: true}
+
+checks:
+  - {target: shoulder.drive, expect: 53.9385 N*m}
+  - {target: elbow.drive, expect: 22.7338 N*m}
+  - {target: shoulder.Fy, expect: 107.8732 N}

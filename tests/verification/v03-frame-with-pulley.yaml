@@ -1,0 +1,68 @@
+name: Wall crane frame with a pulley
+description: |
+  A post A-K (x = 0) is pinned to the ground at A (0,0) and bears against a
+  wall stub on its right at R (0,1) (roller pushing -x). A horizontal boom
+  C-D is pinned to the post at C (0,3) and propped by a strut from B (0,1.5)
+  on the post to E (1.5,3) on the boom. A 0.5 m radius pulley is pinned to
+  the boom end D (3,3). A rope carries W = 2 kN hanging from the pulley's
+  right side (3.5,3) and runs from the pulley top (3,3.5) horizontally back
+  to the post at K (0,3.5).
+
+  Hand derivation:
+    pulley, moments about D:  0.5 T - 0.5 W = 0      ->  T = 2 kN
+      forces: on pulley from boom D = (T, W) = (2, 2) kN
+    whole frame about A:  1.0 N - 3.5 W = 0          ->  N = 7 kN,  A = (7, 2) kN
+    boom about C: strut force S along E->B = (-1,-1)/sqrt2 per unit tension
+      1.5(-S/sqrt2) + 3(-2) = 0                     ->  S = -4 sqrt2 = -5.6569 kN
+      forces: C + (4, 4) + (-2, -2) = 0             ->  on boom from post C = (-2, -2) kN
+    post check: 7 - 7 - 4 + 2 + 2 = 0,  2 - 4 + 2 = 0,
+      about A: 7(1) + 4(1.5) - 2(3) - 2(3.5) = 0  ✓
+
+analysis: planar
+units: {length: m, force: kN}
+
+parameters:
+  W: 2 kN
+  r: 0.5 m
+
+points:
+  A: [0, 0]
+  R: [0, 1]
+  B: [0, 1.5]
+  C: [0, 3]
+  K: [0, 3.5]
+  E: [1.5, 3]
+  D: [3, 3]
+  top: [3 m, 3 m + r]
+  side: [3 m + r, 3 m]
+
+bodies:
+  post: {outline: [A, K]}
+  boom: {outline: [C, D]}
+  pulley:
+    outline: [top, side]
+    loads:
+      - {name: W, force: [0, -W], at: side}
+
+supports:
+  A: {type: pin, body: post, at: A}
+  R: {type: roller, body: post, at: R, normal: -x}
+
+joints:
+  C: {type: pin, bodies: [post, boom], at: C}
+  D: {type: pin, bodies: [boom, pulley], at: D}
+  BE: {type: link, bodies: [post, boom], ends: [B, E]}
+  rope: {type: cable, bodies: [post, pulley], ends: [K, top]}
+
+checks:
+  - {target: A.Fx, expect: 7 kN, tolerance: 0.001%}
+  - {target: A.Fy, expect: 2 kN, tolerance: 0.001%}
+  - {target: R.N, expect: 7 kN, tolerance: 0.001%}
+  - {target: C.Fx, expect: -2 kN, tolerance: 0.001%}
+  - {target: C.Fy, expect: -2 kN, tolerance: 0.001%}
+  - {target: D.Fx, expect: 2 kN, tolerance: 0.001%}
+  - {target: D.Fy, expect: 2 kN, tolerance: 0.001%}
+  - {target: BE.T, expect: -5.656854249 kN, tolerance: 0.001%}
+  - {target: BE.Fx, expect: 4 kN, tolerance: 0.001%}
+  - {target: rope.T, expect: 2 kN, tolerance: 0.001%}
+  - {target: rope.Fy, expect: 0 kN, tolerance: 1e-9 kN}

@@ -1,0 +1,36 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/davidson-engineering/engineering-mechanics/main/schema/engmech.schema.json
+name: Bent cantilever bar
+description: |
+  An L-shaped bar welded to a wall at A: 1 m along x, then 0.5 m along y.
+  A 100 N load and a 10 N·m couple act at the free end C, and both arms
+  carry their own weight.
+
+  Hand check: the reaction must cancel the loads' resultant about A.
+    Fz = 100 + 29.42 = 129.42 N
+    M  = -(r_C × F + couple + r_i × W_i) = (52.45, -109.61, 0) N·m
+
+units: SI
+gravity: -z
+
+points:
+  A: [0, 0, 0]
+  B: [1, 0, 0]
+  C: [1, 0.5, 0]
+
+bodies:
+  bar:
+    shapes:
+      - {type: rod, mass: 2 kg, start: A, end: B}
+      - {type: rod, mass: 1 kg, start: B, end: C}
+    loads:
+      - {name: P, force: [0, 0, -100], at: C}
+      - {name: T, moment: [0, -10, 0], at: C}
+
+supports:
+  A: {type: fixed, at: A}
+
+checks:
+  - {target: A.Fz, expect: 129.41995 N}
+  - {target: A.Mx, expect: 52.4516625 N*m}
+  - {target: A.My, expect: -109.6133 N*m}
+  - {target: A.Mz, expect: 0, tolerance: 1e-9 N*m}

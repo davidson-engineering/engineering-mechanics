@@ -1,0 +1,48 @@
+name: Horizontal plate on a ball joint, a hinge and a cable
+description: |
+  Beer & Johnston style. A uniform 1.2 m x 0.8 m plate of mass 40 kg lies
+  horizontal (z up). It is held by a ball-and-socket at A (0,0,0), a hinge
+  at B (1.2,0,0) that (as in the textbook) exerts no axial thrust and no
+  couples, and a cable from corner C (1.2,0.8,0) to E (0.8,0,0.8) on the
+  wall. A 200 N load hangs at corner D (0,0.8,0).
+
+  Hand derivation:  W = 40 g = 392.266 N at G (0.6,0.4,0)
+    CE = (-0.4,-0.8,0.8), |CE| = 1.2,  u = (-1/3, -2/3, 2/3)
+    Moments about A:  r_C x T u = T (0.5333, -0.8, -0.5333)
+      Mx: 0.5333 T - 0.4 W - 0.8(200) = 0  ->  T  = 0.75 W + 300 = 594.1995 N
+      My: -1.2 Bz - 0.8 T + 0.6 W = 0      ->  Bz = 0.5 W - 2T/3 = -200 N
+      Mz:  1.2 By - 0.5333 T = 0           ->  By = 4T/9 = 264.0887 N
+    Forces:  Ax = T/3 = 198.0665 N,  Ay = 2T/3 - By = 132.0443 N,
+             Az = W + 200 - Bz - 2T/3 = 396.133 N
+
+units: SI
+gravity: -z
+
+points:
+  A: [0, 0, 0]
+  B: [1.2, 0, 0]
+  C: [1.2, 0.8, 0]
+  D: [0, 0.8, 0]
+  E: [0.8, 0, 0.8]
+
+bodies:
+  plate:
+    outline: [A, B, C, D, A]
+    shapes:
+      - {type: box, mass: 40 kg, size: [1.2, 0.8, 0.02], center: [0.6, 0.4, 0]}
+    loads:
+      - {name: P, force: [0, 0, -200], at: D}
+
+supports:
+  A: {type: ball, at: A}
+  B: {type: custom, at: B, constrain: [Fy, Fz]}   # hinge: no axial thrust, no couples
+  CE: {type: cable, at: C, anchor: E}
+
+checks:
+  - {target: plate.mass, expect: 40 kg, tolerance: 0.001%}
+  - {target: CE.T, expect: 594.1995 N, tolerance: 0.001%}
+  - {target: A.Fx, expect: 198.0665 N, tolerance: 0.001%}
+  - {target: A.Fy, expect: 132.0443333 N, tolerance: 0.001%}
+  - {target: A.Fz, expect: 396.133 N, tolerance: 0.001%}
+  - {target: B.Fy, expect: 264.0886667 N, tolerance: 0.001%}
+  - {target: B.Fz, expect: -200 N, tolerance: 0.001%}

@@ -1,0 +1,42 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/davidson-engineering/engineering-mechanics/main/schema/engmech.schema.json
+name: Motor torque for a swinging arm
+description: |
+  A 1.2 m, 3 kg arm carrying a 1 kg payload at its tip is driven by a motor
+  at O. At 30° above horizontal it turns at 2 rad/s and accelerates at
+  5 rad/s², both counter-clockwise. Find the motor torque and the bearing
+  force (inverse dynamics).
+
+  Hand check:
+    I_O = mL²/3 + m_p L² = 2.88 kg·m²
+    τ = I_O α + g cos30° (m L/2 + m_p L) = 14.4 + 25.478 = 39.878 N·m
+    R = Σ m a - Σ m g = (-17.892, 46.217) N
+
+analysis: planar
+units: SI
+gravity: -y
+
+parameters:
+  L: 1.2 m
+  theta: 30 deg
+
+points:
+  O: [0, 0]
+  T: [L*cos(theta), L*sin(theta)]
+
+bodies:
+  arm:
+    shapes:
+      - {type: rod, mass: 3 kg, start: O, end: T}
+      - {type: point, name: payload, mass: 1 kg, at: T}
+    motion:
+      angular_velocity: 2 rad/s
+      angular_acceleration: 5 rad/s^2
+      pivot: O
+
+supports:
+  O: {type: pin, at: O, actuated: true}
+
+checks:
+  - {target: O.drive, expect: 39.8784 N*m}
+  - {target: O.Fx, expect: -17.8923 N}
+  - {target: O.Fy, expect: 46.2170 N}

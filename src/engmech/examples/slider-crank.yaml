@@ -1,0 +1,43 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/davidson-engineering/engineering-mechanics/main/schema/engmech.schema.json
+name: Slider-crank press
+description: |
+  A 100 mm crank drives a 300 mm connecting rod and a piston that pushes
+  against a 1 kN process force. At a crank angle of 60°, find the crank
+  torque that holds the mechanism in balance.
+
+  Hand check: the rod is a two-force member along AB.
+    x_B = 0.05 + √(0.3² - 0.0866²) = 0.33723 m
+    rod force T = -1000 / cos(φ) = -1044.47 N (compression)
+    crank torque = -(0.05 × 301.51 + 0.0866 × 1000) = -101.678 N·m
+
+analysis: planar
+units: SI
+
+parameters:
+  r: 0.1 m
+  l: 0.3 m
+  theta: 60 deg
+  F: 1 kN
+
+points:
+  O: [0, 0]
+  A: [r*cos(theta), r*sin(theta)]
+  B: [r*cos(theta) + sqrt(l**2 - (r*sin(theta))**2), 0]
+
+bodies:
+  crank: {outline: [O, A]}
+  rod: {outline: [A, B]}
+  piston:
+    loads: [{name: F, force: [-F, 0], at: B}]
+
+supports:
+  O: {type: pin, body: crank, at: O, actuated: true}
+  guide: {type: slider, body: piston, at: B, axis: +x}
+
+joints:
+  A: {type: pin, bodies: [crank, rod], at: A}
+  B: {type: pin, bodies: [rod, piston], at: B}
+
+checks:
+  - {target: O.drive, expect: -101.678 N*m}
+  - {target: guide.Fy, expect: 301.511 N}

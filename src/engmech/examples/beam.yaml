@@ -1,0 +1,40 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/davidson-engineering/engineering-mechanics/main/schema/engmech.schema.json
+name: Simply supported beam
+description: |
+  8 m beam, pinned at A and on a roller at B, carrying a point load, a
+  triangular load, a uniform load and a couple.
+
+  Hand check (moments about A, counter-clockwise positive):
+    8 B - 20(2) - 9(2) - 20(6) + 10 = 0  ->  B = 21 kN,  A = 49 - 21 = 28 kN
+
+analysis: planar
+units: {length: m, force: kN}
+
+parameters:
+  P: 20 kN      # point load
+  w: 5 kN/m     # uniform load on the right half
+
+points:
+  A: [0, 0]
+  B: [8, 0]
+
+supports:
+  A: {type: pin, at: A}
+  B: {type: roller, at: B, normal: +y}
+
+loads:
+  - name: P
+    force: [0, -P]
+    at: [2, 0]
+  - name: triangle
+    distributed: {start: A, end: [3, 0], intensity: {start: 0, end: 6 kN/m}, direction: -y}
+  - name: w
+    distributed: {start: [4, 0], end: B, intensity: w, direction: -y}
+  - name: C
+    moment: 10 kN*m          # counter-clockwise
+    at: [6, 0]
+
+checks:
+  - {target: A.Fx, expect: 0 kN, tolerance: 1e-9 kN}
+  - {target: A.Fy, expect: 28 kN}
+  - {target: B.N, expect: 21 kN}

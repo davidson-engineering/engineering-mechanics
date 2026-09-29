@@ -1,0 +1,42 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/davidson-engineering/engineering-mechanics/main/schema/engmech.schema.json
+name: Three-hinged frame
+description: |
+  Two members pinned to the ground at A and B and to each other at C.
+  Member AC carries a 12 kN load at its midpoint and a 6 kN horizontal
+  load at C; member BC is unloaded, so it acts as a two-force member.
+
+  Hand check:
+    whole frame, moments about A:  6 By - 12(1.5) - 6(4) = 0  ->  By = 7 kN, Ay = 5 kN
+    member BC, moments about C:    3 By + 4 Bx = 0            ->  Bx = -5.25 kN
+    horizontal:                    Ax = -6 - Bx = -0.75 kN
+
+analysis: planar
+units: {length: m, force: kN}
+
+points:
+  A: [0, 0]
+  B: [6, 0]
+  C: [3, 4]
+
+bodies:
+  left:
+    loads:
+      - {name: W, force: [0, -12], at: [1.5, 2]}
+      - {name: H, force: [6, 0], at: C}
+  right: {}
+
+supports:
+  A: {type: pin, body: left, at: A}
+  B: {type: pin, body: right, at: B}
+
+joints:
+  C: {type: pin, bodies: [left, right], at: C}
+
+checks:
+  - {target: A.Fx, expect: -0.75 kN}
+  - {target: A.Fy, expect: 5 kN}
+  - {target: B.Fx, expect: -5.25 kN}
+  - {target: B.Fy, expect: 7 kN}
+  - {target: C.Fx, expect: 5.25 kN}
+  - {target: C.Fy, expect: -7 kN}
+  - {target: C.F, expect: 8.75 kN}

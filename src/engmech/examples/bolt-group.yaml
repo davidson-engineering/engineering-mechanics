@@ -1,0 +1,46 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/davidson-engineering/engineering-mechanics/main/schema/engmech.schema.json
+name: Eccentrically loaded bolt group
+description: |
+  A bracket is fixed by four bolts at (±50, ±75) mm and loaded with 20 kN
+  at 250 mm from the bolt group's centroid. With the bracket rigid and
+  every bolt equally stiff, sharing the load by stiffness reproduces the
+  classic elastic method.
+
+  Hand check (elastic method):
+    direct shear     P/n = 5 kN per bolt
+    torsion          M = 20 × 0.25 = 5 kN·m,  Σr² = 4(50² + 75²) = 32 500 mm²
+    torsional share  M·r/Σr² along the perpendicular to r
+    worst bolts (x = +50):  |F| = √(11.538² + 12.692²) = 17.153 kN
+
+analysis: planar
+units: SI-mm
+output_units: {length: mm, force: kN}
+
+parameters:
+  P: 20 kN
+  k: 200 kN/mm          # any value; only equal stiffness matters
+
+points:
+  B1: [50, 75]
+  B2: [-50, 75]
+  B3: [-50, -75]
+  B4: [50, -75]
+
+bodies:
+  bracket:
+    outline: [B1, B2, B3, B4, B1]
+    loads:
+      - {name: P, force: [0, -P], at: [250, 0]}
+
+supports:
+  B1: {type: pin, at: B1, stiffness: {translational: k}}
+  B2: {type: pin, at: B2, stiffness: {translational: k}}
+  B3: {type: pin, at: B3, stiffness: {translational: k}}
+  B4: {type: pin, at: B4, stiffness: {translational: k}}
+
+checks:
+  - {target: B1.F, expect: 17.153 kN, tolerance: 0.01 kN}
+  - {target: B1.Fx, expect: -11.538 kN, tolerance: 0.001 kN}
+  - {target: B1.Fy, expect: 12.692 kN, tolerance: 0.001 kN}
+  - {target: B2.F, expect: 11.848 kN, tolerance: 0.001 kN}
+  - {target: B1.F, max: 20 kN, name: bolt shear capacity}

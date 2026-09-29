@@ -1,0 +1,38 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/davidson-engineering/engineering-mechanics/main/schema/engmech.schema.json
+name: Shaft on two bearings
+description: |
+  A shaft along x carries a belt pulley (tight side 1500 N, slack side
+  500 N, radius 100 mm) and is driven through a gear (radius 75 mm). The
+  gear force P that holds the shaft in balance is solved for, along with
+  the bearing reactions. Bearing A also takes thrust; bearing B only takes
+  radial load. Neither carries moments.
+
+  Hand check:
+    torque about x:  (1500 - 500)(0.1) = 0.075 P       ->  P = 1333.3 N
+    about z (y-forces): 0.6 By = 0.2(2000)             ->  By = 666.7 N,  Ay = 1333.3 N
+    about y (z-forces): 0.6 Bz = 0.45 P                ->  Bz = 1000 N,   Az = 333.3 N
+
+units: SI-mm
+
+points:
+  A: [0, 0, 0]
+  B: [600, 0, 0]
+
+bodies:
+  shaft:
+    outline: [A, B]
+    loads:
+      - {name: T1, force: [0, -1500, 0], at: [200, 0, 100]}
+      - {name: T2, force: [0, -500, 0], at: [200, 0, -100]}
+      - {unknown: P, direction: -z, at: [450, 75, 0]}
+
+supports:
+  A: {type: bearing, at: A, axis: +x, thrust: true}
+  B: {type: bearing, at: B, axis: +x}
+
+checks:
+  - {target: P, expect: 1333.333 N}
+  - {target: A.Fy, expect: 1333.333 N}
+  - {target: A.Fz, expect: 333.333 N}
+  - {target: B.Fy, expect: 666.667 N}
+  - {target: B.Fz, expect: 1000 N}

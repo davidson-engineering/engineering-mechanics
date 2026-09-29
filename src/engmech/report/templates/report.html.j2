@@ -1,0 +1,294 @@
+{%- macro table(tbl, compact=False) -%}
+<div class="table-wrap">
+<table class="data{{ ' compact' if compact }}">
+  <thead><tr>
+  {%- for h in tbl.headers %}
+    <th class="{{ 'num' if loop.index0 >= tbl.numeric_from }}">{{ h }}</th>
+  {%- endfor %}
+  </tr></thead>
+  <tbody>
+  {%- for row in tbl.rows %}
+    <tr>
+    {%- for c in row %}
+      <td class="{{ 'num' if loop.index0 >= tbl.numeric_from or c.numeric }} {{ c.style }}">{{ c.text }}</td>
+    {%- endfor %}
+    </tr>
+  {%- endfor %}
+  </tbody>
+</table>
+</div>
+{%- if tbl.caption %}<p class="caption">{{ tbl.caption }}</p>{% endif %}
+{%- endmacro -%}
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="engmech {{ version }}">
+<title>{{ title }}</title>
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --card: #ffffff;
+    --ink: #0f172a;
+    --ink-2: #334155;
+    --muted: #64748b;
+    --line: #e2e8f0;
+    --line-strong: #cbd5e1;
+    --accent: #1d4ed8;
+    --good: #15803d;
+    --good-bg: #f0fdf4;
+    --warn: #a16207;
+    --warn-bg: #fefce8;
+    --bad: #b91c1c;
+    --bad-bg: #fef2f2;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 15px/1.55 Inter, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  main { max-width: 1180px; margin: 0 auto; padding: 32px 24px 64px; }
+  header.page { margin-bottom: 20px; }
+  .eyebrow { font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 6px; }
+  h1 { font-size: 30px; line-height: 1.2; margin: 0 0 8px; letter-spacing: -0.01em; }
+  h2 { font-size: 20px; margin: 0 0 4px; letter-spacing: -0.005em; }
+  h3 { font-size: 15px; margin: 22px 0 8px; }
+  h3 .units { font-weight: 400; color: var(--muted); font-size: 13px; margin-left: 6px; }
+  .lede { color: var(--ink-2); max-width: 80ch; margin: 0 0 14px; }
+  .lede p { margin: 0 0 8px; }
+  .lede pre { font: 13px/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace; margin: 0 0 8px; white-space: pre-wrap; color: var(--ink-2); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; padding: 0; list-style: none; }
+  .chips li { background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; font-size: 13px; color: var(--ink-2); }
+  .meta { font-size: 13px; color: var(--muted); }
+  .meta code { font-size: 12px; }
+  section.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px 24px; margin: 18px 0; }
+  .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+  .section-head .sub { color: var(--muted); font-size: 13px; }
+  .status { display: flex; gap: 12px; align-items: flex-start; border-radius: 8px; padding: 12px 14px; margin: 8px 0; border: 1px solid; }
+  .status .mark { font-weight: 700; font-size: 16px; line-height: 1.4; width: 1.2em; text-align: center; }
+  .status .text { flex: 1; }
+  .status .text strong { display: block; }
+  .status .case { color: var(--muted); font-size: 13px; }
+  .status.good { background: var(--good-bg); border-color: #bbf7d0; color: var(--good); }
+  .status.warn { background: var(--warn-bg); border-color: #fde68a; color: var(--warn); }
+  .status.bad { background: var(--bad-bg); border-color: #fecaca; color: var(--bad); }
+  ul.warnings { margin: 8px 0 0; padding-left: 20px; color: var(--ink-2); }
+  ul.warnings li { margin: 4px 0; }
+  ul.warnings.bad li::marker { color: var(--bad); }
+  ul.warnings.warn li::marker { color: var(--warn); }
+  .figure { border: 1px solid var(--line); border-radius: 8px; margin: 6px 0 18px; overflow: hidden; background: #fff; }
+  .figure .plot { width: 100%; height: 620px; }
+  .table-wrap { overflow-x: auto; margin: 0 0 4px; }
+  table.data { border-collapse: collapse; width: 100%; font-size: 14px; font-variant-numeric: tabular-nums; }
+  table.data th { text-align: left; font-weight: 600; color: var(--ink-2); font-size: 12.5px; border-bottom: 1.5px solid var(--line-strong); padding: 7px 10px; white-space: nowrap; }
+  table.data td { padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table.data tbody tr:last-child td { border-bottom: none; }
+  table.data .num { text-align: right; white-space: nowrap; }
+  table.data td.strong { font-weight: 600; }
+  table.data td.muted { color: var(--muted); }
+  table.data td.warn { color: var(--warn); font-style: italic; }
+  table.data td.bad { color: var(--bad); font-weight: 600; }
+  table.data td.good { color: var(--good); font-weight: 600; }
+  p.caption { color: var(--muted); font-size: 12.5px; margin: 4px 0 14px; }
+  details { margin: 12px 0 0; border-top: 1px solid var(--line); padding-top: 10px; }
+  details > summary { cursor: pointer; font-weight: 600; font-size: 14px; color: var(--ink-2); list-style: none; }
+  details > summary::-webkit-details-marker { display: none; }
+  details > summary::before { content: "▸"; display: inline-block; width: 1.1em; color: var(--muted); transition: transform .15s; }
+  details[open] > summary::before { transform: rotate(90deg); }
+  details > .body { padding-top: 6px; }
+  dl.facts { display: grid; grid-template-columns: max-content 1fr; gap: 4px 18px; margin: 0; font-size: 14px; align-content: start; }
+  dl.facts dt { color: var(--muted); }
+  dl.facts dd { margin: 0; }
+  .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px 28px; }
+  .matrix { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 12.5px; border-collapse: collapse; }
+  .matrix td { padding: 1px 0 1px 14px; text-align: right; }
+  .inertia { border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
+  .inertia h4 { margin: 0 0 8px; font-size: 14px; }
+  .inertia .label { color: var(--muted); font-size: 12.5px; margin: 8px 0 2px; }
+  .modes { margin: 6px 0 0; padding-left: 20px; }
+  .method { color: var(--ink-2); font-size: 14px; }
+  .method h2 { color: var(--ink); }
+  .method p { margin: 0 0 10px; max-width: 90ch; }
+  footer { color: var(--muted); font-size: 12.5px; text-align: center; margin-top: 28px; }
+  @media (max-width: 640px) {
+    main { padding: 20px 16px 48px; }
+    section.card { padding: 16px; }
+    h1 { font-size: 24px; }
+    .figure .plot { height: 440px; }
+  }
+  @media print {
+    body { background: #fff; font-size: 12px; }
+    main { padding: 0; max-width: none; }
+    section.card { border: none; padding: 0; margin: 14px 0; break-inside: avoid-page; }
+    details { display: block; }
+    details > summary::before { content: ""; }
+    .figure .plot { height: 480px; }
+    .modebar { display: none !important; }
+  }
+</style>
+{% if plotly_js %}<script>{{ plotly_js }}</script>
+{% else %}<script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
+{% endif %}
+</head>
+<body>
+<main>
+<header class="page">
+  <p class="eyebrow">Rigid-body analysis report</p>
+  <h1>{{ title }}</h1>
+  {% if description %}<div class="lede">
+  {% for kind, text in description %}{% if kind == 'pre' %}<pre>{{ text }}</pre>{% else %}<p>{{ text }}</p>{% endif %}{% endfor %}
+  </div>{% endif %}
+  <ul class="chips">{% for f in facts %}<li>{{ f }}</li>{% endfor %}</ul>
+  <div class="meta">
+    {% if source %}Model <code>{{ source }}</code> · {% endif %}Generated {{ generated }} · engmech {{ version }}
+  </div>
+</header>
+
+<section class="card" id="summary">
+  <div class="section-head"><h2>Summary</h2></div>
+  {% set good = cases | selectattr('style', 'equalto', 'good') | list %}
+  {% if multi and good | length > 1 %}
+  <div class="status good">
+    <span class="mark">✓</span>
+    <span class="text"><strong>Equilibrium verified for {{ 'all ' if good | length == cases | length }}{{ good | length }} load cases and combinations</strong>
+      <span class="case">{{ good | map(attribute='name') | join(', ') }} · max relative residual {{ '%.0e' | format(good | map(attribute='case.max_residual') | max) }}</span>
+    </span>
+  </div>
+  {% endif %}
+  {% for c in cases if not (multi and good | length > 1 and c.style == 'good') %}
+  <div class="status {{ c.style }}">
+    <span class="mark">{{ {'good': '✓', 'warn': '!', 'bad': '✗'}[c.style] }}</span>
+    <span class="text"><strong>{{ c.headline }}</strong>
+      {% if multi %}<span class="case">{{ 'Combination' if c.case.kind == 'combination' else 'Load case' }} <em>{{ c.name }}</em></span>{% endif %}
+    </span>
+  </div>
+  {% endfor %}
+  {% if checks %}
+  {% set failed = results.checks | rejectattr('passed') | list %}
+  <div class="status {{ 'bad' if failed else 'good' }}">
+    <span class="mark">{{ '✗' if failed else '✓' }}</span>
+    <span class="text"><strong>{{ results.checks | length - failed | length }} of {{ results.checks | length }} checks passed</strong></span>
+  </div>
+  {% endif %}
+  {% if notes %}
+  <ul class="warnings">{% for n in notes %}<li>{{ n }}</li>{% endfor %}</ul>
+  {% endif %}
+  {% if mechanism %}
+  <p class="caption">Free motions of the mechanism:</p>
+  <ul class="modes">{% for mode in mechanism %}<li>{{ mode | join('; ') }}</li>{% endfor %}</ul>
+  {% endif %}
+</section>
+
+{% for c in cases %}
+<section class="card" id="case-{{ loop.index }}">
+  <div class="section-head">
+    <h2>{% if multi %}{{ 'Combination' if c.case.kind == 'combination' else 'Load case' }}: {{ c.name }}{% else %}Results{% endif %}</h2>
+    {% if c.case.kind == 'combination' %}<span class="sub">{{ c.factors }}</span>{% endif %}
+  </div>
+  {% if c.case.warnings %}
+  <ul class="warnings {{ 'bad' if c.case.status == 'unbalanced' else 'warn' }}">
+    {% for w in c.case.warnings %}<li>{{ w }}</li>{% endfor %}
+    {% for mode in c.excited %}<li>Free motion driven by the loads: {{ mode | join('; ') }}</li>{% endfor %}
+    {% for r in c.redundancy %}<li>Self-stress state (can be added in any amount): {{ r }}</li>{% endfor %}
+    {% if c.redundancy %}<li>Arrows marked * show only the components that equilibrium determines.</li>{% endif %}
+  </ul>
+  {% endif %}
+  <div class="figure"><div class="plot" id="fig-{{ loop.index }}"></div></div>
+  <script>
+    (function () {
+      var fig = {{ c.figure }};
+      Plotly.newPlot("fig-{{ loop.index }}", fig.data, fig.layout, {
+        responsive: true, displaylogo: false,
+        modeBarButtonsToRemove: ["select2d", "lasso2d", "autoScale2d"],
+        toImageButtonOptions: {format: "png", scale: 2, filename: {{ (title ~ ' ' ~ c.name) | tojson }}}
+      });
+    })();
+  </script>
+  {% for tbl in c.tables %}
+  <h3>{{ tbl.title }}{% if tbl.units %} <span class="units">{{ tbl.units }}</span>{% endif %}</h3>
+  {{ table(tbl) }}
+  {% endfor %}
+  <details{% if not c.case.verified %} open{% endif %}>
+    <summary>Equilibrium verification</summary>
+    <div class="body">
+    {% for tbl in c.verification %}
+    <h3>{{ tbl.title }}</h3>
+    {{ table(tbl, compact=True) }}
+    {% endfor %}
+    </div>
+  </details>
+  <details>
+    <summary>Applied loads{% if multi %} in this {{ 'combination' if c.case.kind == 'combination' else 'case' }}{% endif %}</summary>
+    <div class="body">{{ table(c.loads, compact=True) }}</div>
+  </details>
+</section>
+{% endfor %}
+
+{% if checks %}
+<section class="card" id="checks">
+  <div class="section-head"><h2>Checks</h2></div>
+  {{ table(checks) }}
+</section>
+{% endif %}
+
+<section class="card" id="model">
+  <div class="section-head"><h2>Model</h2></div>
+  <div class="grid-2">
+    <dl class="facts">
+      {% for k, v in determinacy %}<dt>{{ k }}</dt><dd>{{ v }}</dd>{% endfor %}
+    </dl>
+    <dl class="facts">
+      <dt>Length</dt><dd>{{ units.label('length') }}</dd>
+      <dt>Force</dt><dd>{{ units.label('force') }}</dd>
+      <dt>Moment</dt><dd>{{ units.label('moment') }}</dd>
+      <dt>Mass</dt><dd>{{ units.label('mass') }}</dd>
+      {% if gravity %}<dt>Gravity</dt><dd>{{ gravity }}</dd>{% endif %}
+    </dl>
+  </div>
+  {% if definitions %}<h3>{{ definitions.title }}</h3>{{ table(definitions) }}{% endif %}
+  {% if mass %}
+  <h3>{{ mass.title }} <span class="units">{{ mass.units }}</span></h3>
+  {{ table(mass) }}
+  <details>
+    <summary>Inertia tensors and principal axes</summary>
+    <div class="body grid-2">
+    {% for name, d in inertia.items() %}
+      <div class="inertia">
+        <h4>{{ name }}</h4>
+        <div class="label">Inertia about the centre of gravity, global axes ({{ inertia_unit }})</div>
+        <table class="matrix">{% for row in d.tensor %}<tr>{% for x in row %}<td>{{ x }}</td>{% endfor %}</tr>{% endfor %}</table>
+        <div class="label">Principal moments ({{ inertia_unit }}) and axes</div>
+        <table class="matrix">{% for i in range(3) %}<tr><td>{{ d.moments[i] }}</td><td>[{{ d.axes[i] | join(', ') }}]</td></tr>{% endfor %}</table>
+        <div class="label">Radii of gyration</div>
+        <div>{{ d.radii | join(', ') }}</div>
+        {% if d.shapes | length > 1 %}
+        <div class="label">Parts</div>
+        <table class="matrix">{% for label, m, cog in d.shapes %}<tr><td style="text-align:left">{{ label }}</td><td>{{ m }}</td><td>({{ cog }})</td></tr>{% endfor %}</table>
+        {% endif %}
+      </div>
+    {% endfor %}
+    </div>
+  </details>
+  {% endif %}
+  {% if points or parameters %}
+  <div class="grid-2">
+    {% if points %}<div><h3>{{ points.title }}</h3>{{ table(points, compact=True) }}</div>{% endif %}
+    {% if parameters %}<div><h3>{{ parameters.title }}</h3>{{ table(parameters, compact=True) }}</div>{% endif %}
+  </div>
+  {% endif %}
+</section>
+
+<section class="card method" id="method">
+  <div class="section-head"><h2>Method and conventions</h2></div>
+  <p>Every body is rigid. Unknowns are the force and moment components each support or joint can transmit; the equations are force and moment equilibrium of every body{% if planar %} in the xy-plane (ΣFx = ΣFy = ΣMz = 0){% endif %}. Prescribed motion adds d'Alembert inertial loads, −m·a at the centre of gravity and −(I·α + ω × I·ω), which turns the same equations into Newton-Euler dynamics.</p>
+  <p>Reactions are the force and moment <em>on the body</em> from the ground, at the support point, in global axes. Joint forces are reported on the first-named body from the second; the other body receives the opposite. N is a normal force, positive when pushing on the body; T is an axial force, positive in tension.</p>
+  <p>Before solving, the equations are scaled by the model size so that stability and determinacy do not depend on the length unit. Loads that do work on a free motion (a mechanism) are reported as out of equilibrium. Components that cannot be found from equilibrium alone are reported as indeterminate rather than guessed; when joint stiffnesses are given, redundant forces are shared by least work.</p>
+  <p>The equilibrium verification sums every load and joint force on each body directly, independent of the solver, and must close to a relative residual below 10⁻⁶.</p>
+</section>
+<footer>engmech {{ version }} · {{ generated }}</footer>
+</main>
+</body>
+</html>
