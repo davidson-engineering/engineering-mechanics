@@ -9,6 +9,9 @@ from engmech import mass as mp
 from engmech.errors import InputError
 from engmech.inputs import Resolver
 
+# kg/m³: from aerogels and foams to the densest elements (osmium 22 590)
+DENSITY_RANGE = (0.05, 25_000.0)
+
 
 @dataclass
 class Shape:
@@ -22,9 +25,19 @@ class Shape:
         raise NotImplementedError
 
     def _mass_args(self, r: Resolver, density_kind: str = "density") -> dict:
+        density = None
+        if self.density is not None:
+            density = r.scalar(self.density, density_kind)
+            if density_kind == "density" and not (DENSITY_RANGE[0] <= density <= DENSITY_RANGE[1]):
+                raise InputError(
+                    f"density {density:.4g} kg/m³ is not a physical solid or liquid "
+                    f"({DENSITY_RANGE[0]:g} to {DENSITY_RANGE[1]:g} kg/m³). A bare number is "
+                    f"read in {r.ctx.units.label('density')}; write the unit, e.g. "
+                    "'7850 kg/m^3' or '7.85 g/cm^3'"
+                )
         return {
             "mass": None if self.mass is None else r.scalar(self.mass, "mass"),
-            "density": None if self.density is None else r.scalar(self.density, density_kind),
+            "density": density,
         }
 
     @property

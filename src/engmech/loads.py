@@ -14,7 +14,7 @@ from typing import Any
 import numpy as np
 
 from engmech.errors import InputError
-from engmech.inputs import Resolver
+from engmech.inputs import Resolver, _negligible
 from engmech.spatial import unit
 
 DEFAULT_CASE = "default"
@@ -226,8 +226,10 @@ class Motion:
         if n != 3:
             raise InputError(f"{kind} needs 3 components", f"{what}.{kind}")
         v = r.ctx.vector(value, kind, 3)
-        if r.planar and np.linalg.norm(v[:2]) > 0:
-            raise InputError(f"{kind} must be about z in a planar analysis", f"{what}.{kind}")
+        if r.planar:
+            if not _negligible(v[:2], v[2:]):
+                raise InputError(f"{kind} must be about z in a planar analysis", f"{what}.{kind}")
+            v[:2] = 0.0
         return v
 
 

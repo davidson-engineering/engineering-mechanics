@@ -9,7 +9,7 @@ overridden and the model rebuilt, e.g. for parameter sweeps.
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 import numpy as np
@@ -142,6 +142,11 @@ class BuiltModel:
     cases: list[str]
     combinations: dict[str, dict[str, float]]
     checks: list[ResolvedCheck]
+    source_path: str | None = None  # the model file, when loaded from one
+    source_text: str | None = None
+    source_sha256: str | None = None
+    source_size: int | None = None
+    overrides: dict[str, str] = field(default_factory=dict)  # parameter overrides applied
 
     def all_points(self) -> np.ndarray:
         pts = [j.geometry.point_a for j in self.joints.values()]
@@ -491,6 +496,11 @@ class Model:
             cases=cases,
             combinations=combinations,
             checks=checks,
+            source_path=None if self.source is None else self.source.path,
+            source_text=None if self.source is None else self.source.text,
+            source_sha256=None if self.source is None else self.source.sha256,
+            source_size=None if self.source is None else self.source.size,
+            overrides={k: str(v) for k, v in (overrides or {}).items()},
         )
 
     def _resolve_check(self, c: Check, i, ctx, bodies, joints, cases, combinations):

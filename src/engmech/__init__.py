@@ -36,7 +36,7 @@ from engmech.model import Check, Model
 from engmech.shapes import Box, Cone, CustomMass, Cylinder, PointMass, Rod, Sphere
 from engmech.units import UnitSystem
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 Revolute = Pin
 Prismatic = Slider
@@ -48,6 +48,27 @@ def load(path) -> Model:
     from engmech.io.loader import load_model
 
     return load_model(path)
+
+
+def loads(text: str) -> Model:
+    """Load a model from YAML text."""
+    from engmech.io.loader import loads_model
+
+    return loads_model(text)
+
+
+def mass_properties(*shapes, units=None) -> MassProperties:
+    """Combined mass properties of shapes, without building a model.
+
+    >>> p = mass_properties(Box(mass=2, size=[1, 1, 1], center=[0, 0, 0]))
+    >>> p.mass, p.cog, p.inertia
+    """
+    from engmech import mass as mp
+    from engmech.inputs import Resolver
+    from engmech.units import Context
+
+    r = Resolver(Context(UnitSystem.from_spec(units)))
+    return mp.combine([s.resolve(r, f"shapes[{i}]") for i, s in enumerate(shapes)])
 
 
 __all__ = [
@@ -85,4 +106,6 @@ __all__ = [
     "Universal",
     "UnknownLoad",
     "load",
+    "loads",
+    "mass_properties",
 ]

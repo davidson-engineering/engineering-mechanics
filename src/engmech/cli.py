@@ -87,7 +87,7 @@ def _exit_code(results, strict: bool) -> int:
         return EXIT_RESULT
     if not all(c.verified for c in results.cases.values()):
         return EXIT_RESULT
-    if strict and results.status != "ok":
+    if strict and (results.status != "ok" or results.sensitivity):
         return EXIT_RESULT
     return EXIT_OK
 
@@ -98,7 +98,7 @@ def _open(path: Path) -> None:
 
 class _Group(click.Group):
     def list_commands(self, ctx):
-        return ["solve", "report", "check", "mass", "sweep", "examples", "schema"]
+        return ["solve", "report", "check", "mass", "sweep", "validate", "examples", "schema"]
 
 
 # --------------------------------------------------------------------------- commands
@@ -407,6 +407,68 @@ def _sweep_values(spec: str):
         return [evaluate(v) for v in spec.split(",") if v.strip()]
     except (InputError, ValueError, pint.DimensionalityError) as exc:
         _fail(f"--param: {exc}")
+
+
+@main.command()
+@click.option(
+    "--report",
+    "report_path",
+    type=click.Path(dir_okay=False),
+    help="Write an HTML validation report.",
+)
+@click.option("--json", "json_out", metavar="PATH", help="Write results as JSON ('-' for stdout).")
+@click.option(
+    "--cases", default=40, show_default=True, metavar="N", help="Random cases per property check."
+)
+def validate(report_path, json_out, cases):
+    """Run the built-in validation suite on this installation.
+
+    Every bundled benchmark must reproduce its hand-derived answers, and
+    seeded random property checks must agree with independent computations.
+    Exits with status 0 only if everything passes.
+    """
+    from engmech import validation
+
+    run = validation.run(n=cases)
+    if json_out == "-":
+        click.echo(json.dumps(run.to_dict(), indent=2))
+    else:
+        _print_validation(run)
+        if json_out:
+            Path(json_out).write_text(json.dumps(run.to_dict(), indent=2), encoding="utf-8")
+            console.print(f"[dim]wrote {json_out}[/]", soft_wrap=True)
+    if report_path:
+        from engmech.report.html import render_validation
+
+        Path(report_path).write_text(render_validation(run), encoding="utf-8")
+        if json_out != "-":
+            console.print(f"[dim]wrote {report_path}[/]", soft_wrap=True)
+    sys.exit(EXIT_OK if run.passed else EXIT_RESULT)
+
+
+def _print_validation(run) -> None:
+    table = RichTable(
+        title=f"engmech {run.environment['engmech']} validation",
+        title_justify="left",
+        title_style="bold cyan",
+        box=box.SIMPLE_HEAVY,
+        header_style="bold",
+        show_edge=False,
+    )
+    table.add_column("Case", no_wrap=True)
+    table.add_column("Evidence", overflow="fold")
+    table.add_column("Result", no_wrap=True)
+    for o in run.outcomes:
+        mark = Text("✓ pass", style="green") if o.passed else Text("✗ FAIL", style="bold red")
+        table.add_row(o.name, Text(o.detail, style="dim"), mark)
+    console.print(table)
+    parts = [
+        f"{s['passed']}/{s['cases']} {k} cases ({s['checks']} comparisons)"
+        for k, s in run.summary().items()
+    ]
+    verdict = "PASS" if run.passed else "FAIL"
+    style = "bold green" if run.passed else "bold red"
+    console.print(Text(f"{verdict}: " + ", ".join(parts) + f" in {run.seconds:.1f} s", style=style))
 
 
 @main.group()

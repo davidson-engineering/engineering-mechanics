@@ -32,7 +32,12 @@ from engmech.model import GROUND, BuiltModel
 RANK_TOL = 1e-10  # relative singular-value cutoff
 NULL_TOL = 1e-8  # participation threshold in orthonormal null-space vectors
 BALANCE_TOL = 1e-9  # relative load imbalance tolerated before declaring "unbalanced"
+NOISE_FLOOR = 1e-12  # imbalance below this fraction of all loads is round-off
 MIN_LENGTH = 1e-9  # m; a model smaller than this is a point (geometry below is round-off)
+# Condition number above which the supports "nearly" allow a free motion: reactions
+# are then far larger than the loads and very sensitive to geometry. Well-braced
+# models are below ~10; the solver itself stays accurate up to ~1e10 (RANK_TOL).
+COND_WARN = 1e3
 
 SPATIAL_ROWS = (0, 1, 2, 3, 4, 5)
 PLANAR_ROWS = (0, 1, 5)
@@ -100,7 +105,7 @@ class CaseSolution:
     values: np.ndarray  # SI, one per unknown
     determined: np.ndarray  # bool per unknown
     free_modes: np.ndarray  # scaled null-space basis still undetermined, (n, k)
-    imbalance: float  # relative
+    imbalance: float  # worst unbalanced load of any body, relative to that body's loads
     excited_modes: np.ndarray  # generalised force per mechanism mode (scaled)
     used_stiffness: bool = False
     notes: list[str] = field(default_factory=list)
@@ -214,6 +219,15 @@ def load_vector(system: System, factors: dict[str, float]) -> np.ndarray:
     return b
 
 
+def body_load_scales(system: System, factors: dict[str, float]) -> dict[str, float]:
+    """Scaled load magnitude acting on each body."""
+    out = dict.fromkeys(system.model.bodies, 0.0)
+    for w in system.model.loads:
+        f = abs(factors.get(w.case, 0.0))
+        out[w.body] += f * (np.linalg.norm(w.force) + np.linalg.norm(w.moment) / system.length)
+    return out
+
+
 def load_scale(system: System, factors: dict[str, float]) -> float:
     """Sum of scaled load magnitudes: the yardstick for 'small' residuals."""
     total = 0.0
@@ -245,7 +259,7 @@ def solve_case(system: System, analysis: Analysis, factors: dict[str, float]) ->
     n = analysis.unknowns
 
     excited = analysis.mechanism_modes.T @ b if analysis.mechanism_modes.size else np.zeros(0)
-    imbalance = float(np.linalg.norm(excited) / scale) if np.any(b) else 0.0
+    imbalance = _imbalance(system, analysis, b, factors, scale)
 
     if r > 0:
         Ur, sr, Vr = analysis.U[:, :r], analysis.s[:r], analysis.Vt[:r].T
@@ -278,6 +292,32 @@ def solve_case(system: System, analysis: Analysis, factors: dict[str, float]) ->
     mu[np.abs(mu) < 1e-14 * scale] = 0.0
     values = system.col_scale * mu
     return CaseSolution(values, determined, free, imbalance, excited, used_stiffness)
+
+
+def _imbalance(system, analysis, b, factors, scale) -> float:
+    """How far the loads are from being balanceable, judged body by body.
+
+    The part of the loads the supports cannot carry is the projection of the
+    load vector onto the mechanism modes. Each body's share is compared with
+    the loads on that body, so a small load driving a free motion of a lightly
+    loaded body is not hidden by large loads elsewhere. A share below
+    NOISE_FLOOR of all loads is round-off.
+    """
+    if not analysis.mechanism_modes.size or not np.any(b):
+        return 0.0
+    modes = analysis.mechanism_modes
+    unbalanced = modes @ (modes.T @ b)
+    worst = 0.0
+    per_body = body_load_scales(system, factors)
+    for body, own in per_body.items():
+        rows = system.body_rows(body)
+        if not rows:
+            continue
+        share = float(np.linalg.norm(unbalanced[rows]))
+        if share <= NOISE_FLOOR * scale:
+            continue
+        worst = max(worst, share / max(own, NOISE_FLOOR * scale))
+    return worst
 
 
 def solve(model: BuiltModel):

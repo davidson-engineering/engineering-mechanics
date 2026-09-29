@@ -87,7 +87,7 @@ def render_report(
         description=_paragraphs(model.description),
         facts=facts,
         source=source_path,
-        generated=dt.datetime.now().strftime("%Y-%m-%d %H:%M"),
+        generated=dt.datetime.now(dt.UTC).strftime("%Y-%m-%d %H:%M UTC"),
         version=__version__,
         results=results,
         overall_ok=results.ok,
@@ -107,6 +107,8 @@ def render_report(
         units=units,
         planar=model.planar,
         gravity=_gravity_text(model, units),
+        provenance=results.provenance(),
+        source_text=model.source_text,
         plotly_js=None if plotly_cdn else Markup(get_plotlyjs()),
     )
 
@@ -152,3 +154,8 @@ def _gravity_text(model, units: UnitSystem) -> str | None:
         + ") "
         + (units.label("acceleration"))
     )
+
+
+def render_validation(run) -> str:
+    """HTML report of a validation run (see engmech.validation)."""
+    return _env.get_template("validation.html.j2").render(run=run, summary=run.summary())

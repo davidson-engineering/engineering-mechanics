@@ -181,9 +181,6 @@ class UnitSystem:
             return ""
         return f"{ureg.Unit(self.unit(kind_name)):~P}"
 
-    def to_display(self, value_si, kind_name: str):
-        return np.asarray(value_si, dtype=float) * self.factor(kind_name)
-
     def format(self, value_si: float, kind_name: str, digits: int = 4, unit: bool = True) -> str:
         text = format_number(float(value_si) * self.factor(kind_name), digits)
         label = self.label(kind_name)
@@ -203,9 +200,6 @@ class UnitSystem:
             if k.dimensionality == q.dimensionality:
                 return self.unit(k.name)
         return None
-
-    def describe(self) -> dict[str, str]:
-        return {name: getattr(self, name) for name in BASE_KINDS} | dict(self.overrides)
 
 
 def _check_unit(unit: str, k: Kind, where: str) -> None:
@@ -258,7 +252,6 @@ _FUNCTIONS = {
     "abs": ("any", None),
     "atan2": ("pair", None),
     "hypot": ("pair", None),
-    "radians": ("number", None),
 }
 _CONSTANTS = {"pi": math.pi}
 # Python keywords that are also unit names; the tokenizer renames them.
@@ -291,6 +284,8 @@ def _prepare(text: str, units_only: bool = False) -> str:
       every name chained to it by '*', '/' or '**' without spaces
       ('9.81 m/s**2', '5 kN*m'). Such names never resolve to parameters, so
       a parameter called m cannot turn '2 m' into '2 * mass'.
+    * a number with its units is one quantity: '10 kN / 2 m' is
+      (10 kN) / (2 m), not (10 kN / 2) * m.
     """
     try:
         tokens = [
@@ -319,12 +314,18 @@ def _prepare(text: str, units_only: bool = False) -> str:
             )
             if prev_value and starts_value and not is_call:
                 out.append("*")
-        is_function = (
+        call_syntax = (
             tok.type == tokenize.NAME
             and i + 1 < len(tokens)
             and tokens[i + 1].string == "("
-            and string in _FUNCTION_NAMES
+            and tokens[i + 1].start == tok.end
         )
+        if call_syntax and string not in _FUNCTION_NAMES and not unit_next:
+            raise InputError(
+                f"unknown function {string!r} in {text!r}; available: "
+                f"{', '.join(sorted(_FUNCTION_NAMES))} (for a product write {string}*(...))"
+            )
+        is_function = call_syntax and string in _FUNCTION_NAMES
         if tok.type == tokenize.NAME and not is_function:
             if units_only or unit_next:
                 out.append(UNIT_PREFIX + string)
@@ -352,7 +353,56 @@ def _prepare(text: str, units_only: bool = False) -> str:
             else:
                 unit_next, in_chain, after_pow = False, False, False
         prev = tok
-    return " ".join(out)
+    return " ".join(_group_quantities(out))
+
+
+def _is_number(text: str) -> bool:
+    try:
+        float(text)
+    except ValueError:
+        return False
+    return True
+
+
+def _chain_step(out: list[str], j: int) -> int:
+    """How many tokens at ``j`` continue a unit chain: '* unit', '/ unit',
+    '** 2' or '** -2'; 0 if the chain ends."""
+    n = len(out)
+    if j + 1 >= n:
+        return 0
+    if out[j] in ("*", "/") and out[j + 1].startswith(UNIT_PREFIX):
+        return 2
+    if out[j] == "**":
+        if _is_number(out[j + 1]):
+            return 2
+        if out[j + 1] in ("+", "-") and j + 2 < n and _is_number(out[j + 2]):
+            return 3
+    return 0
+
+
+def _group_quantities(out: list[str]) -> list[str]:
+    """Parenthesise each number with its unit chain: '10 * kN / 2 * m' becomes
+    '(10 * kN) / (2 * m)', so implicit multiplication binds tighter than '/'."""
+    res: list[str] = []
+    i, n = 0, len(out)
+    while i < n:
+        starts = (
+            _is_number(out[i])
+            and not (res and res[-1] == "**")
+            and i + 2 < n
+            and out[i + 1] == "*"
+            and out[i + 2].startswith(UNIT_PREFIX)
+        )
+        if not starts:
+            res.append(out[i])
+            i += 1
+            continue
+        j = i + 3
+        while (step := _chain_step(out, j)) > 0:
+            j += step
+        res += ["(", *out[i:j], ")"]
+        i = j
+    return res
 
 
 def evaluate(
@@ -507,8 +557,6 @@ class _Evaluator:
             if mode == "angle":
                 return Q_(fn(self._angle(a, fname)))
             if mode == "number":
-                if fname == "radians":
-                    return Q_(self._number(a, fname), "rad")
                 return Q_(fn(self._number(a, fname)), "rad")
         except InputError:
             raise

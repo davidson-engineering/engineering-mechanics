@@ -20,7 +20,7 @@ from typing import Any
 import numpy as np
 
 from engmech.errors import InputError
-from engmech.spatial import EZ, frame_from_axes, parse_axis_name, rotation_about_axis, unit
+from engmech.spatial import frame_from_axes, parse_axis_name, rotation_about_axis, unit
 from engmech.units import Context, split_vector
 
 
@@ -34,12 +34,6 @@ class Resolver:
 
     def scalar(self, value: Any, kind: str) -> float:
         return self.ctx.scalar(value, kind)
-
-    def positive(self, value: Any, kind: str, what: str) -> float:
-        v = self.scalar(value, kind)
-        if not v > 0:
-            raise InputError(f"{what} must be positive")
-        return v
 
     # ------------------------------------------------------------ vectors
 
@@ -57,8 +51,10 @@ class Resolver:
             return np.append(self.ctx.vector(value, kind, 2), 0.0)
         if n == 3:
             v = self.ctx.vector(value, kind, 3)
-            if self.planar and abs(v[2]) > 0:
-                raise InputError(f"{what} must lie in the xy-plane in a planar analysis")
+            if self.planar:
+                if not _negligible(v[2:], v[:2]):
+                    raise InputError(f"{what} must lie in the xy-plane in a planar analysis")
+                v[2] = 0.0
             return v
         expected = "2 or 3" if self.planar else "3"
         raise InputError(f"{what} needs {expected} components, got {value!r}")
@@ -130,8 +126,10 @@ class Resolver:
         if n != 3:
             raise InputError(f"{what} needs 3 components, got {value!r}")
         v = self.ctx.vector(value, "moment", 3)
-        if self.planar and np.linalg.norm(v[:2]) > 0:
-            raise InputError(f"{what} must be about the z-axis in a planar analysis")
+        if self.planar:
+            if not _negligible(v[:2], v[2:]):
+                raise InputError(f"{what} must be about the z-axis in a planar analysis")
+            v[:2] = 0.0
         return v
 
     def _directed(self, value: Any, kind: str, at, what: str) -> np.ndarray:
@@ -193,9 +191,13 @@ class Resolver:
                 raise InputError(f"{what}: {exc}") from None
         raise InputError(f"{what}: expected two axes, {{axis, angle}} or {{euler, sequence}}")
 
-    def check_planar_frame(self, frame: np.ndarray, what: str) -> None:
-        if self.planar and abs(abs(frame[:, 2] @ EZ) - 1) > 1e-9:
-            raise InputError(f"{what}: in a planar analysis the local z-axis must be the global z")
+
+def _negligible(out_of_plane: np.ndarray, in_plane: np.ndarray) -> bool:
+    """True if out-of-plane components are round-off: below 1e-9 of the in-plane
+    size, or below 1e-12 in SI when the in-plane part is zero too. Computed
+    geometry often carries values like 1e-17 where zero is meant."""
+    size = float(np.linalg.norm(in_plane))
+    return float(np.linalg.norm(out_of_plane)) <= 1e-9 * size + 1e-12
 
 
 def _is_bare(value: Any) -> bool:

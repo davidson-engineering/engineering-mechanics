@@ -28,6 +28,7 @@ def results_to_dict(results: Results, units=None) -> dict[str, Any]:
         "analysis": "planar" if m.planar else "spatial",
         "units": {k: units.label(k) for k in ("length", "force", "moment", "mass", "inertia")},
         "status": results.status,
+        "provenance": results.provenance(),
         "structure": {
             "equations": a.equations,
             "unknowns": a.unknowns,
@@ -37,6 +38,7 @@ def results_to_dict(results: Results, units=None) -> dict[str, Any]:
             "condition_number": a.condition_number if a.rank else None,
         },
         "notes": list(results.notes),
+        "sensitivity": results.sensitivity,
         "bodies": {},
         "cases": {},
         "checks": [

@@ -5,7 +5,6 @@ answers derived by hand in its description.
 """
 
 from importlib import resources
-from pathlib import Path
 
 import pytest
 
@@ -14,7 +13,9 @@ from engmech.io.loader import load_model
 EXAMPLES = sorted(
     p for p in (resources.files("engmech") / "examples").iterdir() if p.name.endswith(".yaml")
 )
-VERIFICATION = sorted((Path(__file__).parent / "verification").glob("*.yaml"))
+VERIFICATION = sorted(
+    p for p in (resources.files("engmech") / "benchmarks").iterdir() if p.name.endswith(".yaml")
+)
 
 
 @pytest.mark.parametrize("path", EXAMPLES + VERIFICATION, ids=lambda p: p.name)

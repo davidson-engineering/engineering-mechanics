@@ -134,3 +134,57 @@ def test_sweep_endpoint_without_unit_takes_the_other_ends(tmp_path):
 
 def test_model_file_errors_are_input_errors():
     assert issubclass(ModelFileError, InputError)
+
+
+def test_planar_accepts_numerically_zero_out_of_plane_parts():
+    """Computed geometry carries round-off like 1e-17 where zero is meant."""
+    m = em.Model(planar=True)
+    m.support("A", em.Pin(at=[0, 0, 1e-17]))
+    m.support("B", em.Roller(at=[1, 0, -3e-18], normal="+y"))
+    m.load(em.Force([0, -10, 2e-16], at=[0.5, 0, 0]))
+    m.load(em.Moment([1e-18, 0, 3]))
+    assert m.solve().primary["B"].scalars["N"] == pytest.approx(2)
+    m = em.Model(planar=True)
+    m.support("A", em.Fixed(at=[0, 0]))
+    m.load(em.Force([0, -10, 0.1], at=[1, 0, 0]))
+    with pytest.raises(InputError, match="xy-plane"):
+        m.solve()
+
+
+def test_fixed_pivot_motion_is_not_flagged():
+    """Found by the MuJoCo cross-check: round-off at a fixed pivot was reported."""
+    m = em.Model(planar=True)
+    m.body(
+        "arm",
+        mass=2.0,
+        cog=[1.1, 0.3],
+        inertia=[1, 1, 0.5],
+        motion=em.Motion(
+            angular_velocity="12 rad/s", angular_acceleration="100 rad/s^2", pivot=[0, 0]
+        ),
+    )
+    m.support("O", em.Pin(at=[0, 0], actuated=True), body="arm")
+    assert m.solve().notes == []
+
+
+def test_density_unit_trap_is_caught():
+    """Found by the trimesh cross-check: with lengths in mm, a bare 7850 is
+    kg/mm^3, a billion times too heavy. Implausible densities are rejected."""
+    text = (
+        "units: {length: mm}\n"
+        "bodies: {b: {shapes: [{type: box, density: 7850, size: [100, 50, 10], "
+        "center: [0, 0, 0]}]}}\n"
+    )
+    with pytest.raises(InputError, match="not a physical solid"):
+        em.loads(text).build()
+    ok = text.replace("density: 7850", "density: 7850 kg/m^3")
+    assert em.loads(ok).build().bodies["b"].mass.mass == pytest.approx(0.3925)
+
+
+def test_mass_properties_without_a_model():
+    p = em.mass_properties(
+        em.Box(density="7.85 g/cm^3", size="[100, 50, 10] mm", center=[0, 0, 0]),
+        em.PointMass(mass="1 kg", at="[0.1, 0, 0] m"),
+    )
+    assert p.mass == pytest.approx(1.3925)
+    assert p.cog[0] == pytest.approx(0.1 / 1.3925)

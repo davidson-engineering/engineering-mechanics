@@ -27,107 +27,7 @@
 <meta name="generator" content="engmech {{ version }}">
 <title>{{ title }}</title>
 <style>
-  :root {
-    --bg: #f6f7f9;
-    --card: #ffffff;
-    --ink: #0f172a;
-    --ink-2: #334155;
-    --muted: #64748b;
-    --line: #e2e8f0;
-    --line-strong: #cbd5e1;
-    --accent: #1d4ed8;
-    --good: #15803d;
-    --good-bg: #f0fdf4;
-    --warn: #a16207;
-    --warn-bg: #fefce8;
-    --bad: #b91c1c;
-    --bad-bg: #fef2f2;
-    --radius: 10px;
-  }
-  * { box-sizing: border-box; }
-  html { -webkit-text-size-adjust: 100%; }
-  body {
-    margin: 0; background: var(--bg); color: var(--ink);
-    font: 15px/1.55 Inter, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  }
-  main { max-width: 1180px; margin: 0 auto; padding: 32px 24px 64px; }
-  header.page { margin-bottom: 20px; }
-  .eyebrow { font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 6px; }
-  h1 { font-size: 30px; line-height: 1.2; margin: 0 0 8px; letter-spacing: -0.01em; }
-  h2 { font-size: 20px; margin: 0 0 4px; letter-spacing: -0.005em; }
-  h3 { font-size: 15px; margin: 22px 0 8px; }
-  h3 .units { font-weight: 400; color: var(--muted); font-size: 13px; margin-left: 6px; }
-  .lede { color: var(--ink-2); max-width: 80ch; margin: 0 0 14px; }
-  .lede p { margin: 0 0 8px; }
-  .lede pre { font: 13px/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace; margin: 0 0 8px; white-space: pre-wrap; color: var(--ink-2); }
-  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; padding: 0; list-style: none; }
-  .chips li { background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; font-size: 13px; color: var(--ink-2); }
-  .meta { font-size: 13px; color: var(--muted); }
-  .meta code { font-size: 12px; }
-  section.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px 24px; margin: 18px 0; }
-  .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
-  .section-head .sub { color: var(--muted); font-size: 13px; }
-  .status { display: flex; gap: 12px; align-items: flex-start; border-radius: 8px; padding: 12px 14px; margin: 8px 0; border: 1px solid; }
-  .status .mark { font-weight: 700; font-size: 16px; line-height: 1.4; width: 1.2em; text-align: center; }
-  .status .text { flex: 1; }
-  .status .text strong { display: block; }
-  .status .case { color: var(--muted); font-size: 13px; }
-  .status.good { background: var(--good-bg); border-color: #bbf7d0; color: var(--good); }
-  .status.warn { background: var(--warn-bg); border-color: #fde68a; color: var(--warn); }
-  .status.bad { background: var(--bad-bg); border-color: #fecaca; color: var(--bad); }
-  ul.warnings { margin: 8px 0 0; padding-left: 20px; color: var(--ink-2); }
-  ul.warnings li { margin: 4px 0; }
-  ul.warnings.bad li::marker { color: var(--bad); }
-  ul.warnings.warn li::marker { color: var(--warn); }
-  .figure { border: 1px solid var(--line); border-radius: 8px; margin: 6px 0 18px; overflow: hidden; background: #fff; }
-  .figure .plot { width: 100%; height: 620px; }
-  .table-wrap { overflow-x: auto; margin: 0 0 4px; }
-  table.data { border-collapse: collapse; width: 100%; font-size: 14px; font-variant-numeric: tabular-nums; }
-  table.data th { text-align: left; font-weight: 600; color: var(--ink-2); font-size: 12.5px; border-bottom: 1.5px solid var(--line-strong); padding: 7px 10px; white-space: nowrap; }
-  table.data td { padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
-  table.data tbody tr:last-child td { border-bottom: none; }
-  table.data .num { text-align: right; white-space: nowrap; }
-  table.data td.strong { font-weight: 600; }
-  table.data td.muted { color: var(--muted); }
-  table.data td.warn { color: var(--warn); font-style: italic; }
-  table.data td.bad { color: var(--bad); font-weight: 600; }
-  table.data td.good { color: var(--good); font-weight: 600; }
-  p.caption { color: var(--muted); font-size: 12.5px; margin: 4px 0 14px; }
-  details { margin: 12px 0 0; border-top: 1px solid var(--line); padding-top: 10px; }
-  details > summary { cursor: pointer; font-weight: 600; font-size: 14px; color: var(--ink-2); list-style: none; }
-  details > summary::-webkit-details-marker { display: none; }
-  details > summary::before { content: "▸"; display: inline-block; width: 1.1em; color: var(--muted); transition: transform .15s; }
-  details[open] > summary::before { transform: rotate(90deg); }
-  details > .body { padding-top: 6px; }
-  dl.facts { display: grid; grid-template-columns: max-content 1fr; gap: 4px 18px; margin: 0; font-size: 14px; align-content: start; }
-  dl.facts dt { color: var(--muted); }
-  dl.facts dd { margin: 0; }
-  .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px 28px; }
-  .matrix { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 12.5px; border-collapse: collapse; }
-  .matrix td { padding: 1px 0 1px 14px; text-align: right; }
-  .inertia { border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
-  .inertia h4 { margin: 0 0 8px; font-size: 14px; }
-  .inertia .label { color: var(--muted); font-size: 12.5px; margin: 8px 0 2px; }
-  .modes { margin: 6px 0 0; padding-left: 20px; }
-  .method { color: var(--ink-2); font-size: 14px; }
-  .method h2 { color: var(--ink); }
-  .method p { margin: 0 0 10px; max-width: 90ch; }
-  footer { color: var(--muted); font-size: 12.5px; text-align: center; margin-top: 28px; }
-  @media (max-width: 640px) {
-    main { padding: 20px 16px 48px; }
-    section.card { padding: 16px; }
-    h1 { font-size: 24px; }
-    .figure .plot { height: 440px; }
-  }
-  @media print {
-    body { background: #fff; font-size: 12px; }
-    main { padding: 0; max-width: none; }
-    section.card { border: none; padding: 0; margin: 14px 0; break-inside: avoid-page; }
-    details { display: block; }
-    details > summary::before { content: ""; }
-    .figure .plot { height: 480px; }
-    .modebar { display: none !important; }
-  }
+{% include "style.css" %}
 </style>
 {% if plotly_js %}<script>{{ plotly_js }}</script>
 {% else %}<script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
@@ -166,6 +66,12 @@
     </span>
   </div>
   {% endfor %}
+  {% if results.sensitivity %}
+  <div class="status warn">
+    <span class="mark">!</span>
+    <span class="text"><strong>Results are sensitive to geometry</strong>{{ results.sensitivity }}</span>
+  </div>
+  {% endif %}
   {% if checks %}
   {% set failed = results.checks | rejectattr('passed') | list %}
   <div class="status {{ 'bad' if failed else 'good' }}">
@@ -281,10 +187,33 @@
   {% endif %}
 </section>
 
+<section class="card" id="provenance">
+  <div class="section-head"><h2>Provenance</h2><span class="sub">what produced these results</span></div>
+  <dl class="facts">
+    <dt>engmech</dt><dd>{{ provenance.engmech }}</dd>
+    <dt>Generated</dt><dd>{{ provenance.generated.replace('T', ' ').replace('+00:00', '') }} UTC</dd>
+    <dt>Python / platform</dt><dd>{{ provenance.python }} on {{ provenance.platform }}</dd>
+    <dt>Libraries</dt><dd>{% for k, v in provenance.libraries.items() %}{{ k }} {{ v }}{{ ", " if not loop.last }}{% endfor %}</dd>
+    {% if provenance.input %}
+    <dt>Input file</dt><dd><code>{{ provenance.input.path }}</code> ({{ provenance.input.bytes }} bytes)</dd>
+    <dt>SHA-256</dt><dd><code class="hash">{{ provenance.input.sha256 }}</code></dd>
+    {% endif %}
+    {% if provenance.parameter_overrides %}
+    <dt>Parameter overrides</dt><dd>{% for k, v in provenance.parameter_overrides.items() %}<code>{{ k }} = {{ v }}</code>{{ ", " if not loop.last }}{% endfor %}</dd>
+    {% endif %}
+  </dl>
+  {% if source_text %}
+  <details>
+    <summary>Input file as analysed</summary>
+    <div class="body"><pre class="source">{{ source_text }}</pre></div>
+  </details>
+  {% endif %}
+</section>
+
 <section class="card method" id="method">
   <div class="section-head"><h2>Method and conventions</h2></div>
   <p>Every body is rigid. Unknowns are the force and moment components each support or joint can transmit; the equations are force and moment equilibrium of every body{% if planar %} in the xy-plane (ΣFx = ΣFy = ΣMz = 0){% endif %}. Prescribed motion adds d'Alembert inertial loads, −m·a at the centre of gravity and −(I·α + ω × I·ω), which turns the same equations into Newton-Euler dynamics.</p>
-  <p>Reactions are the force and moment <em>on the body</em> from the ground, at the support point, in global axes. Joint forces are reported on the first-named body from the second; the other body receives the opposite. N is a normal force, positive when pushing on the body; T is an axial force, positive in tension.</p>
+  <p>Reactions are the force and moment <em>on the body</em> from the ground, at the support point, in global axes. Joint forces are reported on the "On" body from the "From" body (for <code>bodies: [a, b]</code>, on b from a); the other body receives the opposite. N is a normal force, positive when pushing on the body; T is an axial force, positive in tension.</p>
   <p>Before solving, the equations are scaled by the model size so that stability and determinacy do not depend on the length unit. Loads that do work on a free motion (a mechanism) are reported as out of equilibrium. Components that cannot be found from equilibrium alone are reported as indeterminate rather than guessed; when joint stiffnesses are given, redundant forces are shared by least work.</p>
   <p>The equilibrium verification sums every load and joint force on each body directly, independent of the solver, and must close to a relative residual below 10⁻⁶.</p>
 </section>
