@@ -407,6 +407,10 @@ which logo is currently in effect. A company-wide logo looks like this:
 logo = "/shared/branding/logo.png"   # or "https://...", or "none"
 ```
 
+On Windows, put the path in single quotes (`logo = 'C:\branding\logo.png'`)
+or use forward slashes: inside double quotes TOML reads a backslash as the
+start of an escape sequence.
+
 Set `ENGMECH_CONFIG` to use a config file somewhere else, for example one
 shared by a team.
 

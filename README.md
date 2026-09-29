@@ -119,7 +119,7 @@ every report in the user config file (`engmech config` shows where it is):
 
 ```toml
 [report]
-logo = "/path/to/logo.png"   # or an https:// URL
+logo = "/path/to/logo.png"   # or an https:// URL; on Windows, 'C:\path\logo.png'
 ```
 
 A model file's `report: {logo: ...}`, the `ENGMECH_LOGO` environment

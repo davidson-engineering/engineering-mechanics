@@ -19,6 +19,7 @@ from __future__ import annotations
 import base64
 import mimetypes
 import os
+import re
 import tomllib
 import urllib.error
 import urllib.request
@@ -60,9 +61,19 @@ def user_config() -> dict:
     if not path.is_file():
         return {}
     try:
-        return tomllib.loads(path.read_text(encoding="utf-8"))
-    except (tomllib.TOMLDecodeError, UnicodeDecodeError) as exc:
+        text = path.read_text(encoding="utf-8")
+        return tomllib.loads(text)
+    except UnicodeDecodeError as exc:
         raise InputError(f"{path}: invalid config file: {exc}") from None
+    except tomllib.TOMLDecodeError as exc:
+        hint = ""
+        if re.search(r'"[^"\n]*\\', text):  # the usual cause: a Windows path in "..."
+            hint = (
+                '; a backslash inside "..." starts an escape sequence in TOML, so write '
+                "Windows paths in single quotes, as in logo = 'C:\\branding\\logo.png', "
+                "or with forward slashes"
+            )
+        raise InputError(f"{path}: invalid config file: {exc}{hint}") from None
 
 
 def resolve_logo(argument=UNSET, model_logo=None, model_dir: Path | None = None) -> Logo | None:

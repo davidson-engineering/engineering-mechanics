@@ -54,7 +54,9 @@ def test_no_logo_by_default():
 def test_precedence(tmp_path, logo_file, monkeypatch, isolated_user_settings):
     other = tmp_path / "other.png"
     other.write_bytes(PNG + b"\0")
-    isolated_user_settings.write_text(f'[report]\nlogo = "{other}"\n', encoding="utf-8")
+    # a literal (single-quoted) TOML string, as the docs advise, keeps a
+    # Windows path's backslashes
+    isolated_user_settings.write_text(f"[report]\nlogo = '{other}'\n", encoding="utf-8")
     assert resolve_logo().source == str(other)  # a config file sets a default
     monkeypatch.setenv("ENGMECH_LOGO", str(logo_file))
     assert resolve_logo().source == str(logo_file)  # environment beats config
@@ -114,8 +116,22 @@ def test_file_errors(tmp_path, monkeypatch):
 
 def test_invalid_config_file(isolated_user_settings):
     isolated_user_settings.write_text("[report\nlogo = 1", encoding="utf-8")
-    with pytest.raises(InputError, match="invalid config file"):
+    with pytest.raises(InputError, match="invalid config file") as error:
         resolve_logo()
+    assert "single quotes" not in str(error.value)
+
+
+def test_windows_path_in_double_quotes_explains_itself(isolated_user_settings):
+    """The natural way to write a Windows path is invalid TOML ("\\U" is an
+    escape); the error says how to write it instead."""
+    isolated_user_settings.write_text(
+        '[report]\nlogo = "C:\\Users\\me\\logo.png"\n', encoding="utf-8"
+    )
+    with pytest.raises(InputError, match=r"invalid config file.*in single quotes"):
+        resolve_logo()
+    result = CliRunner().invoke(main, ["config"])
+    assert result.exit_code == 1
+    assert "logo = 'C:\\branding\\logo.png'" in result.output
 
 
 def test_cli_options(tmp_path, logo_file):
