@@ -34,7 +34,7 @@ err_console = Console(stderr=True)
 
 
 def _fail(message: str) -> None:
-    err_console.print(Text("error: ", style="bold red") + Text(message))
+    err_console.print(Text("error: ", style="bold red") + Text(message), soft_wrap=True)
     sys.exit(EXIT_INPUT)
 
 
@@ -43,7 +43,7 @@ def _load(path: str) -> Model:
         return load_model(path)
     except ModelFileError as exc:
         for problem in exc.problems:
-            err_console.print(Text("error: ", style="bold red") + Text(problem))
+            err_console.print(Text("error: ", style="bold red") + Text(problem), soft_wrap=True)
         sys.exit(EXIT_INPUT)
     except InputError as exc:
         _fail(str(exc))
@@ -61,7 +61,7 @@ def _overrides(values: tuple[str, ...]) -> dict[str, str]:
 
 def _report_input_error(exc: InputError) -> None:
     for problem in getattr(exc, "problems", None) or [str(exc)]:
-        err_console.print(Text("error: ", style="bold red") + Text(problem))
+        err_console.print(Text("error: ", style="bold red") + Text(problem), soft_wrap=True)
     sys.exit(EXIT_INPUT)
 
 
@@ -142,13 +142,15 @@ def solve(file, sets, units, cases, verbose, json_out, report, open_report, stri
             results, console=console, units=unit_system, verbose=verbose, cases=list(cases) or None
         )
         if json_out:
-            Path(json_out).write_text(json.dumps(results.to_dict(unit_system), indent=2))
-            console.print(f"[dim]wrote {json_out}[/]")
+            Path(json_out).write_text(
+                json.dumps(results.to_dict(unit_system), indent=2), encoding="utf-8"
+            )
+            console.print(f"[dim]wrote {json_out}[/]", soft_wrap=True)
     if report or open_report:
         path = Path(report or Path(file).with_suffix(".html"))
         results.report(path, units=unit_system, source_path=file)
         if json_out != "-":
-            console.print(f"[dim]wrote {path}[/]")
+            console.print(f"[dim]wrote {path}[/]", soft_wrap=True)
         if open_report:
             _open(path)
     sys.exit(_exit_code(results, strict))
@@ -167,7 +169,7 @@ def report(file, output, sets, units, open_report, cdn):
     results = _solve(model, _overrides(sets))
     path = Path(output or Path(file).with_suffix(".html"))
     results.report(path, units=_units(units), source_path=file, plotly_cdn=cdn)
-    console.print(f"wrote {path}")
+    console.print(f"wrote {path}", soft_wrap=True)
     if open_report:
         _open(path)
     sys.exit(_exit_code(results, strict=False))
@@ -337,12 +339,12 @@ def sweep(file, param, outputs, case, sets, units, csv_path, plot_path):
         table.add_row(*cells, style=style)
     console.print(table)
     if csv_path:
-        with open(csv_path, "w", newline="") as fh:
+        with open(csv_path, "w", newline="", encoding="utf-8-sig") as fh:
             writer = csv.writer(fh)
             writer.writerow(headers)
             for q, flat, _ in rows:
                 writer.writerow([q.magnitude] + [flat[k] for k in keys])
-        console.print(f"[dim]wrote {csv_path}[/]")
+        console.print(f"[dim]wrote {csv_path}[/]", soft_wrap=True)
     if plot_path:
         from engmech.report.figure import sweep_figure
 
@@ -360,7 +362,7 @@ def sweep(file, param, outputs, case, sets, units, csv_path, plot_path):
         html = fig.to_html(include_plotlyjs=True, full_html=True)
         html = html.replace("<head>", f"<head><title>{escape(title)}</title>", 1)
         Path(plot_path).write_text(html, encoding="utf-8")
-        console.print(f"[dim]wrote {plot_path}[/]")
+        console.print(f"[dim]wrote {plot_path}[/]", soft_wrap=True)
 
 
 def _output_kind(results, key: str) -> str:
@@ -419,7 +421,7 @@ def examples_list():
     table.add_column("Name", style="bold")
     table.add_column("Description")
     for p in _example_files():
-        data = YAML(typ="safe").load(p.read_text())
+        data = YAML(typ="safe").load(p.read_text(encoding="utf-8"))
         table.add_row(p.name[:-5], str(data.get("name", "")))
     console.print(table)
     console.print("[dim]engmech examples copy NAME [DEST] to start from one[/]")
@@ -436,7 +438,7 @@ def _find_example(name: str):
 @click.argument("name")
 def examples_show(name):
     """Print an example model."""
-    click.echo(_find_example(name).read_text(), nl=False)
+    click.echo(_find_example(name).read_text(encoding="utf-8"), nl=False)
 
 
 @examples.command("copy")
@@ -451,8 +453,8 @@ def examples_copy(name, dest, force):
         target = target / src.name
     if target.exists() and not force:
         _fail(f"{target} exists (use --force to overwrite)")
-    target.write_text(src.read_text())
-    console.print(f"wrote {target}")
+    target.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
+    console.print(f"wrote {target}", soft_wrap=True)
 
 
 @main.command()
@@ -463,8 +465,8 @@ def schema(output):
 
     text = json.dumps(json_schema(), indent=2)
     if output:
-        Path(output).write_text(text + "\n")
-        console.print(f"wrote {output}")
+        Path(output).write_text(text + "\n", encoding="utf-8")
+        console.print(f"wrote {output}", soft_wrap=True)
     else:
         click.echo(text)
 

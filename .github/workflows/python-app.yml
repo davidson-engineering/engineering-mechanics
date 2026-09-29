@@ -26,6 +26,9 @@ jobs:
   test:
     name: Python ${{ matrix.python-version }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    env:
+      PYTHONWARNDEFAULTENCODING: "1"  # fail on file I/O without an explicit encoding
+      PYTHONUTF8: "0"
     strategy:
       fail-fast: false
       matrix:

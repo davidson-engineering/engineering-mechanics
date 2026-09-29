@@ -49,7 +49,9 @@ packages = ["src/engmech"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra --strict-markers"
-filterwarnings = ["error"]
+# EncodingWarning only fires under PYTHONWARNDEFAULTENCODING=1 (set in CI): any file
+# access without an explicit encoding breaks on Windows. plotly's own cache is exempt.
+filterwarnings = ["error", "ignore::EncodingWarning:plotly.*"]
 
 [tool.coverage.run]
 branch = true

@@ -119,7 +119,8 @@ def test_sweep_endpoint_without_unit_takes_the_other_ends(tmp_path):
     path.write_text(
         "analysis: planar\nunits: SI-kN\nparameters: {P: 10 kN}\n"
         "supports:\n  A: {type: pin, at: [0, 0]}\n  B: {type: roller, at: [4, 0], normal: +y}\n"
-        "loads:\n  - {force: [0, -P], at: [2, 0]}\n"
+        "loads:\n  - {force: [0, -P], at: [2, 0]}\n",
+        encoding="utf-8",
     )
     result = CliRunner().invoke(
         main, ["sweep", str(path), "--param", "P=0:20 kN:3", "--output", "B.N"]

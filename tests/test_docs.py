@@ -14,7 +14,7 @@ DOCS = [ROOT / "README.md", *sorted((ROOT / "docs").glob("*.md"))]
 
 
 def yaml_blocks(path: Path) -> list[str]:
-    return re.findall(r"```yaml\n(.*?)```", path.read_text(), re.S)
+    return re.findall(r"```yaml\n(.*?)```", path.read_text(encoding="utf-8"), re.S)
 
 
 def parse(block: str) -> None:

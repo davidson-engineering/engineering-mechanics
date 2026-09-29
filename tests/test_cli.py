@@ -25,7 +25,7 @@ checks:
 @pytest.fixture
 def beam(tmp_path):
     path = tmp_path / "beam.yaml"
-    path.write_text(BEAM)
+    path.write_text(BEAM, encoding="utf-8")
     return path
 
 
@@ -65,7 +65,7 @@ def test_report(beam, tmp_path):
     out = tmp_path / "r.html"
     result = run("report", beam, "-o", out, "--cdn")
     assert result.exit_code == 0
-    html = out.read_text()
+    html = out.read_text(encoding="utf-8")
     assert "<h1>Test beam</h1>" in html
     assert "Support reactions" in html
     assert "cdn.plot.ly" in html
@@ -76,7 +76,8 @@ def test_check_and_mass(beam, tmp_path):
     assert "statically determinate and stable" in result.output
     massy = tmp_path / "m.yaml"
     massy.write_text(
-        "bodies:\n  b:\n    shapes: [{type: box, mass: 2, size: [1, 1, 1], center: [0, 0, 0]}]\n"
+        "bodies:\n  b:\n    shapes: [{type: box, mass: 2, size: [1, 1, 1], center: [0, 0, 0]}]\n",
+        encoding="utf-8",
     )
     result = run("mass", massy, "--about", "[0, 0, 1]")
     assert result.exit_code == 0, result.output
@@ -87,7 +88,7 @@ def test_sweep_to_csv(beam, tmp_path):
     out = tmp_path / "s.csv"
     result = run("sweep", beam, "--param", "P=0 kN:12 kN:4", "--output", "A.Fy,B.N", "--csv", out)
     assert result.exit_code == 0, result.output
-    with out.open() as fh:
+    with out.open(encoding="utf-8-sig") as fh:
         rows = list(csv.reader(fh))
     assert rows[0] == ["P (kN)", "A.Fy (kN)", "B.N (kN)"]
     assert [float(r[2]) for r in rows[1:]] == pytest.approx([0, 1.333333, 2.666667, 4])
@@ -95,7 +96,7 @@ def test_sweep_to_csv(beam, tmp_path):
 
 def test_input_errors_exit_1(tmp_path):
     bad = tmp_path / "bad.yaml"
-    bad.write_text("supports:\n  A: {type: pin, att: [0, 0]}\n")
+    bad.write_text("supports:\n  A: {type: pin, att: [0, 0]}\n", encoding="utf-8")
     result = CliRunner().invoke(main, ["solve", str(bad)])
     assert result.exit_code == 1
     assert "bad.yaml:2:" in result.output
@@ -114,4 +115,4 @@ def test_examples_commands(tmp_path):
 def test_schema_command(tmp_path):
     out = tmp_path / "schema.json"
     run("schema", "-o", out)
-    assert json.loads(out.read_text())["title"] == "engmech model"
+    assert json.loads(out.read_text(encoding="utf-8"))["title"] == "engmech model"

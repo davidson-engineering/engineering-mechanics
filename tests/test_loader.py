@@ -118,6 +118,6 @@ def test_committed_schema_is_current():
     from pathlib import Path
 
     committed = Path(__file__).parents[1] / "schema" / "engmech.schema.json"
-    assert json.loads(committed.read_text()) == json_schema(), (
+    assert json.loads(committed.read_text(encoding="utf-8")) == json_schema(), (
         "regenerate with: engmech schema -o schema/engmech.schema.json"
     )
