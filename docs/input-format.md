@@ -39,6 +39,7 @@ editor using yaml-language-server, put this on the first line:
 | `loads` | Loads not listed under a body. |
 | `combinations` | Factored combinations of load cases. |
 | `checks` | Expected values and design limits to verify. |
+| `report` | HTML report settings (the logo). |
 
 ## Units and values
 
@@ -377,6 +378,41 @@ Fx Fy Fz Mx My Mz, F or M (magnitudes), or the joint's scalar (N, T,
 drive); or `<body>.mass`; or the name of an unknown load. Values are shown
 in the unit you wrote them in. Without `case`, `max`/`min` checks apply to
 every case and combination. The CLI exits with status 2 if any check fails.
+
+## report
+
+```yaml
+report:
+  logo: ../brand/logo.png      # a file (relative to this model file), an https:// URL, or none
+```
+
+The logo appears at the top right of the HTML report and the validation
+report. It is embedded in the file (PNG, JPEG, SVG, GIF or WebP, up to
+2 MB), so reports stay self-contained. The logo is chosen from the most
+specific setting present:
+
+1. `--logo FILE|URL` or `--no-logo` on the command line;
+2. `report.logo` in the model file;
+3. the `ENGMECH_LOGO` environment variable;
+4. `[report] logo` in the user config file, for a company-wide default.
+
+With none of these set, reports have no logo.
+
+`engmech config` prints where the user config file is on your system and
+which logo is currently in effect. A company-wide logo looks like this:
+
+```toml
+# config.toml
+[report]
+logo = "/shared/branding/logo.png"   # or "https://...", or "none"
+```
+
+On Windows, put the path in single quotes (`logo = 'C:\branding\logo.png'`)
+or use forward slashes: inside double quotes TOML reads a backslash as the
+start of an escape sequence.
+
+Set `ENGMECH_CONFIG` to use a config file somewhere else, for example one
+shared by a team.
 
 ## Results and verification
 

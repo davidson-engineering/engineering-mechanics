@@ -38,6 +38,19 @@ def test_yaml_snippets_parse(path):
         parse(block)
 
 
+def test_config_snippets_parse():
+    import tomllib
+
+    blocks = [
+        block
+        for path in DOCS
+        for block in re.findall(r"```toml\n(.*?)```", path.read_text(encoding="utf-8"), re.S)
+    ]
+    assert blocks
+    for block in blocks:
+        assert "logo" in tomllib.loads(block)["report"]
+
+
 def test_readme_quick_start_solves():
     block = yaml_blocks(ROOT / "README.md")[0]
     results = loads_model(block).solve()

@@ -281,6 +281,8 @@ def build_model(spec: s.ModelFile) -> Model:
         model.combination(name, _plain(factors))
     for c in spec.checks:
         model.check(Check(**_plain(c.model_dump())))
+    if "logo" in spec.report.model_fields_set:
+        model.report_logo = "none" if spec.report.logo in (None, False) else spec.report.logo
     return model
 
 

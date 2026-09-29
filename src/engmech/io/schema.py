@@ -291,6 +291,14 @@ class CheckSpec(Strict):
     min: Scalar = None
 
 
+class ReportSpec(Strict):
+    logo: str | bool | None = Field(
+        None,
+        description="logo image for HTML reports: a file (relative to this file), an "
+        "http(s) URL, or none",
+    )
+
+
 class ModelFile(Strict):
     """An engmech model file."""
 
@@ -310,6 +318,7 @@ class ModelFile(Strict):
     loads: list[LoadSpec] = Field(default_factory=list)
     combinations: dict[str, dict[str, Scalar]] = Field(default_factory=dict)
     checks: list[CheckSpec] = Field(default_factory=list)
+    report: ReportSpec = Field(default_factory=ReportSpec)
 
 
 def json_schema() -> dict:

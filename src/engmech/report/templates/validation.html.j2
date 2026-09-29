@@ -14,11 +14,14 @@
 </head>
 <body>
 <main>
-<header class="page">
-  <p class="eyebrow">Software validation report</p>
-  <h1>engmech {{ run.environment.engmech }}</h1>
-  <p class="lede">Results of the built-in validation suite, run on this installation. Every benchmark model must reproduce its hand-derived answers and pass the independent equilibrium check; every property check compares seeded random cases with an independent computation.</p>
-  <div class="meta">Run {{ run.started.replace('T', ' ').replace('+00:00', '') }} UTC · {{ '%.1f' | format(run.seconds) }} s · seed {{ run.seed }}</div>
+<header class="page masthead">
+  <div class="masthead-text">
+    <p class="eyebrow">Software validation report</p>
+    <h1>engmech {{ run.environment.engmech }}</h1>
+    <p class="lede">Results of the built-in validation suite, run on this installation. Every benchmark model must reproduce its hand-derived answers and pass the independent equilibrium check; every property check compares seeded random cases with an independent computation.</p>
+    <div class="meta">Run {{ run.started.replace('T', ' ').replace('+00:00', '') }} UTC · {{ '%.1f' | format(run.seconds) }} s · seed {{ run.seed }}</div>
+  </div>
+  {% if logo %}<img class="logo" src="{{ logo.data_uri }}" alt="Logo">{% endif %}
 </header>
 
 <section class="card">

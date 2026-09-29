@@ -1894,6 +1894,29 @@
       "title": "PointShape",
       "type": "object"
     },
+    "ReportSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "logo": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "logo image for HTML reports: a file (relative to this file), an http(s) URL, or none",
+          "title": "Logo"
+        }
+      },
+      "title": "ReportSpec",
+      "type": "object"
+    },
     "RodShape": {
       "additionalProperties": false,
       "properties": {
@@ -2650,6 +2673,9 @@
       },
       "title": "Checks",
       "type": "array"
+    },
+    "report": {
+      "$ref": "#/$defs/ReportSpec"
     }
   },
   "title": "engmech model",
