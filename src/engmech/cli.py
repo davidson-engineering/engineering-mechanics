@@ -82,6 +82,13 @@ def _units(spec: str | None):
         _fail(str(exc))
 
 
+def _write_report(results, path, units, source, cdn, logo) -> None:
+    try:
+        results.report(path, units=units, source_path=source, plotly_cdn=cdn, logo=logo)
+    except InputError as exc:
+        _fail(str(exc))
+
+
 def _exit_code(results, strict: bool) -> int:
     if results.status == "unbalanced" or not all(c.passed for c in results.checks):
         return EXIT_RESULT
@@ -98,13 +105,40 @@ def _open(path: Path) -> None:
 
 class _Group(click.Group):
     def list_commands(self, ctx):
-        return ["solve", "report", "check", "mass", "sweep", "validate", "examples", "schema"]
+        return [
+            "solve",
+            "report",
+            "check",
+            "mass",
+            "sweep",
+            "validate",
+            "examples",
+            "schema",
+            "config",
+        ]
 
 
 # --------------------------------------------------------------------------- commands
 
 UNITS_HELP = "Display units: SI, SI-kN, SI-mm, US-in, US-ft (default: the file's output_units)."
 SET_HELP = "Override a parameter, e.g. --set 'P=12 kN'. Repeatable."
+LOGO_HELP = "Logo for the HTML report: an image file or http(s) URL (see 'engmech config')."
+
+
+def logo_options(command):
+    """--logo / --no-logo, shared by every command that writes an HTML report."""
+    command = click.option("--no-logo", is_flag=True, help="Leave the logo out of the report.")(
+        command
+    )
+    return click.option("--logo", metavar="FILE|URL", help=LOGO_HELP)(command)
+
+
+def _logo_argument(logo, no_logo):
+    from engmech.report.branding import UNSET
+
+    if no_logo:
+        return None
+    return UNSET if logo is None else logo
 
 
 @click.group(cls=_Group, context_settings={"help_option_names": ["-h", "--help"]})
@@ -137,7 +171,8 @@ def _utf8_streams() -> None:
 @click.option("--report", "report", type=click.Path(dir_okay=False), help="Write an HTML report.")
 @click.option("--open", "open_report", is_flag=True, help="Open the HTML report when done.")
 @click.option("--strict", is_flag=True, help="Exit with status 2 if anything is indeterminate.")
-def solve(file, sets, units, cases, verbose, json_out, report, open_report, strict):
+@logo_options
+def solve(file, sets, units, cases, verbose, json_out, report, open_report, strict, logo, no_logo):
     """Solve a model and print support reactions and joint forces."""
     model = _load(file)
     results = _solve(model, _overrides(sets))
@@ -160,7 +195,7 @@ def solve(file, sets, units, cases, verbose, json_out, report, open_report, stri
             console.print(f"[dim]wrote {json_out}[/]", soft_wrap=True)
     if report or open_report:
         path = Path(report or Path(file).with_suffix(".html"))
-        results.report(path, units=unit_system, source_path=file)
+        _write_report(results, path, unit_system, file, False, _logo_argument(logo, no_logo))
         if json_out != "-":
             console.print(f"[dim]wrote {path}[/]", soft_wrap=True)
         if open_report:
@@ -175,12 +210,13 @@ def solve(file, sets, units, cases, verbose, json_out, report, open_report, stri
 @click.option("--units", "units", metavar="SYSTEM", help=UNITS_HELP)
 @click.option("--open", "open_report", is_flag=True, help="Open the report in a browser.")
 @click.option("--cdn", is_flag=True, help="Load plotly from a CDN instead of embedding it.")
-def report(file, output, sets, units, open_report, cdn):
+@logo_options
+def report(file, output, sets, units, open_report, cdn, logo, no_logo):
     """Write a self-contained HTML report with an interactive 3D/2D diagram."""
     model = _load(file)
     results = _solve(model, _overrides(sets))
     path = Path(output or Path(file).with_suffix(".html"))
-    results.report(path, units=_units(units), source_path=file, plotly_cdn=cdn)
+    _write_report(results, path, _units(units), file, cdn, _logo_argument(logo, no_logo))
     console.print(f"wrote {path}", soft_wrap=True)
     if open_report:
         _open(path)
@@ -420,7 +456,8 @@ def _sweep_values(spec: str):
 @click.option(
     "--cases", default=40, show_default=True, metavar="N", help="Random cases per property check."
 )
-def validate(report_path, json_out, cases):
+@logo_options
+def validate(report_path, json_out, cases, logo, no_logo):
     """Run the built-in validation suite on this installation.
 
     Every bundled benchmark must reproduce its hand-derived answers, and
@@ -440,7 +477,11 @@ def validate(report_path, json_out, cases):
     if report_path:
         from engmech.report.html import render_validation
 
-        Path(report_path).write_text(render_validation(run), encoding="utf-8")
+        try:
+            html = render_validation(run, _logo_argument(logo, no_logo))
+        except InputError as exc:
+            _fail(str(exc))
+        Path(report_path).write_text(html, encoding="utf-8")
         if json_out != "-":
             console.print(f"[dim]wrote {report_path}[/]", soft_wrap=True)
     sys.exit(EXIT_OK if run.passed else EXIT_RESULT)
@@ -529,6 +570,32 @@ def examples_copy(name, dest, force):
         _fail(f"{target} exists (use --force to overwrite)")
     target.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
     console.print(f"wrote {target}", soft_wrap=True)
+
+
+@main.command()
+def config():
+    """Show the user config file and the report logo currently in effect.
+
+    Set a company-wide logo in the config file:
+
+    \b
+        [report]
+        logo = "/path/to/logo.png"    # or an https:// URL, or "none"
+
+    The model file's report.logo, the ENGMECH_LOGO variable and --logo /
+    --no-logo take precedence, in that order from least to most specific.
+    """
+    from engmech.report.branding import config_path, resolve_logo
+
+    path = config_path()
+    state = "exists" if path.is_file() else "not created yet"
+    console.print(f"Config file: {path} ({state})", soft_wrap=True, markup=False)
+    try:
+        logo = resolve_logo()
+    except InputError as exc:
+        _fail(str(exc))
+    source = "none (set one with [report] logo in the config file)" if logo is None else logo.source
+    console.print(f"Report logo: {source}", soft_wrap=True, markup=False)
 
 
 @main.command()

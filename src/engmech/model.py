@@ -146,6 +146,7 @@ class BuiltModel:
     source_text: str | None = None
     source_sha256: str | None = None
     source_size: int | None = None
+    report_logo: Any = None
     overrides: dict[str, str] = field(default_factory=dict)  # parameter overrides applied
 
     def all_points(self) -> np.ndarray:
@@ -206,6 +207,7 @@ class Model:
         self.combinations: dict[str, dict[str, Any]] = {}
         self.checks: list[Check] = []
         self.source = None  # set by the file loader: maps input paths to lines
+        self.report_logo = None  # the model file's report.logo, if any
 
     # ---------------------------------------------------------------- building
 
@@ -500,6 +502,7 @@ class Model:
             source_text=None if self.source is None else self.source.text,
             source_sha256=None if self.source is None else self.source.sha256,
             source_size=None if self.source is None else self.source.size,
+            report_logo=self.report_logo,
             overrides={k: str(v) for k, v in (overrides or {}).items()},
         )
 

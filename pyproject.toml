@@ -1,22 +1,42 @@
 [project]
-name = "engineering-mechanics"
+name = "engmech"
 description = "Rigid-body statics, dynamics and mass properties for engineers: unit-aware input files, a CLI, and verified HTML reports"
-version = "0.3.0"
+dynamic = ["version"]  # from engmech.__version__
 readme = "README.md"
 requires-python = ">=3.11"
-license = { file = "LICENSE" }
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [{ name = "Matthew Davidson", email = "matthew@davidson.engineering" }]
+keywords = [
+  "engineering",
+  "mechanics",
+  "statics",
+  "dynamics",
+  "rigid body",
+  "free-body diagram",
+  "reactions",
+  "truss",
+  "frame",
+  "mass properties",
+  "inertia",
+  "units",
+]
 classifiers = [
   "Development Status :: 4 - Beta",
-  "Intended Audience :: Science/Research",
+  "Environment :: Console",
   "Intended Audience :: Education",
+  "Intended Audience :: Manufacturing",
+  "Intended Audience :: Science/Research",
+  "Topic :: Scientific/Engineering",
   "Topic :: Scientific/Engineering :: Physics",
   "Operating System :: OS Independent",
   "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
+  "Typing :: Typed",
 ]
 dependencies = [
   "numpy>=1.26",
@@ -34,7 +54,11 @@ dependencies = [
 engmech = "engmech.cli:main"
 
 [project.urls]
-repository = "https://github.com/davidson-engineering/engineering-mechanics"
+Homepage = "https://github.com/davidson-engineering/engineering-mechanics"
+Documentation = "https://github.com/davidson-engineering/engineering-mechanics/tree/main/docs"
+Source = "https://github.com/davidson-engineering/engineering-mechanics"
+Issues = "https://github.com/davidson-engineering/engineering-mechanics/issues"
+Changelog = "https://github.com/davidson-engineering/engineering-mechanics/releases"
 
 [dependency-groups]
 dev = ["pytest>=8", "pytest-cov>=5", "hypothesis>=6.100", "ruff>=0.6"]
@@ -42,11 +66,28 @@ dev = ["pytest>=8", "pytest-cov>=5", "hypothesis>=6.100", "ruff>=0.6"]
 validation = ["mujoco>=3.1", "PyNiteFEA>=0.0.100", "trimesh>=4", "manifold3d>=3"]
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling>=1.27"]  # 1.27: SPDX license expressions (PEP 639)
 build-backend = "hatchling.build"
+
+[tool.hatch.version]
+path = "src/engmech/__init__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/engmech"]
+
+[tool.hatch.build.targets.sdist]
+# an explicit list, so stray files in a working copy never end up in a release
+include = [
+  "/src",
+  "/tests",
+  "/docs",
+  "/schema",
+  "/scripts",
+  "/README.md",
+  "/LICENSE",
+  "/pyproject.toml",
+  "/uv.lock",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

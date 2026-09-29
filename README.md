@@ -1,5 +1,9 @@
 # engmech
 
+[![PyPI](https://img.shields.io/pypi/v/engmech)](https://pypi.org/project/engmech/)
+[![Python](https://img.shields.io/pypi/pyversions/engmech)](https://pypi.org/project/engmech/)
+[![Tests](https://github.com/davidson-engineering/engineering-mechanics/actions/workflows/python-app.yml/badge.svg)](https://github.com/davidson-engineering/engineering-mechanics/actions/workflows/python-app.yml)
+
 Rigid-body statics, dynamics and mass properties for engineers.
 
 Describe a problem in a short YAML file with real units, solve it from the
@@ -7,8 +11,21 @@ command line, and get support reactions, joint forces, member forces and
 actuator torques, each one verified against equilibrium, plus an
 interactive HTML report with free-body diagrams.
 
+![An engmech report: title, summary checks, reaction and joint-force tables, and a free-body diagram of a truss with members coloured by tension and compression](https://raw.githubusercontent.com/davidson-engineering/engineering-mechanics/main/docs/images/report.png)
+
+## Quick start
+
+```bash
+pip install engmech
+engmech examples copy truss        # start from a bundled example
+engmech report truss.yaml --open   # the report above
+```
+
+A model is a short YAML file:
+
 ```yaml
 # beam.yaml
+name: Simply supported beam
 analysis: planar
 units: {length: m, force: kN}
 
@@ -23,12 +40,20 @@ loads:
 
 ```console
 $ engmech solve beam.yaml
+╭─────────────────────────────────────────────────────────────────╮
+│ Simply supported beam                                           │
+│ planar · statics · 1 body · 2 supports · units: m, kN, kN⋅m, kg │
+╰─────────────────────────────────────────────────────────────────╯
+
 ✓ Equilibrium verified (max relative residual 1e-16)
 Support reactions  kN
 Support   Type     Fx   Fy   Resultant    N
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 A         pin       0   11          11
 B         roller    –   13          13   13
+Force and moment on the body from the ground, at the support point. A dash means
+that connection cannot carry that component. N is the normal force, positive
+when pushing on the body.
 ```
 
 ## What it does
@@ -60,23 +85,57 @@ B         roller    –   13          13   13
   also carry `checks:` (hand calculations or design limits) that are
   reported as pass or fail, and `engmech validate` confirms that an
   installation reproduces the documented benchmark results.
-- **Traceable.** Reports and JSON record the engmech and library versions,
-  platform, parameter overrides and the input file's SHA-256.
 - **Engineering conveniences.** Named points and parameters with
   expressions (`[L*cos(theta), L*sin(theta)]`), load cases and combinations,
   solved-for loads ("what force P holds this?"), actuated joints, cables
   and contacts that warn when they go slack or lift off, parameter sweeps,
   JSON/CSV export, and a JSON Schema for editor autocompletion.
 
+## Reports
+
+`engmech report model.yaml` writes one self-contained HTML file: it opens
+offline, prints cleanly, and can be filed with the calculation it records.
+A report leads with the results:
+
+1. **Summary**: whether each load case is balanced and determinate, how
+   many of the file's checks pass, and any warning that applies to the
+   whole model, such as free motions or sensitivity to geometry.
+2. **Results** for each load case and combination: support reactions,
+   joint forces and solved loads, then an interactive free-body diagram.
+   Planar models are drawn with engineering support symbols; spatial models
+   in 3D. Two-force members are coloured by tension and compression, and a
+   dropdown switches between the whole model and each body on its own.
+3. **Checks**, **notes** from the model's description (hand calculations,
+   assumptions), and the **model** itself: determinacy, units, points,
+   parameters and mass properties.
+4. **Provenance**: the engmech, Python and library versions, the platform,
+   parameter overrides, and the input file with its SHA-256, so a result
+   can be traced to exactly what produced it.
+
+![A 3D free-body diagram of a boom held by a ball joint and two cables](https://raw.githubusercontent.com/davidson-engineering/engineering-mechanics/main/docs/images/report-3d.png)
+
+**Company logo.** Reports have no logo unless you give one. Set it once for
+every report in the user config file (`engmech config` shows where it is):
+
+```toml
+[report]
+logo = "/path/to/logo.png"   # or an https:// URL
+```
+
+A model file's `report: {logo: ...}`, the `ENGMECH_LOGO` environment
+variable, and `--logo FILE|URL` or `--no-logo` on the command line override
+it, in that order from least to most specific. The image is embedded in the
+report, so it stays self-contained.
+
 ## Install
 
 ```bash
-pip install git+https://github.com/davidson-engineering/engineering-mechanics.git
-# or, from a clone:
-uv sync        # development environment, then `uv run engmech ...`
+pip install engmech
+# or as an isolated command-line tool:
+uv tool install engmech      # or: pipx install engmech
 ```
 
-Requires Python 3.11 or newer.
+Requires Python 3.11 or newer, on Linux, macOS or Windows.
 
 ## Command line
 
@@ -94,6 +153,7 @@ engmech check my-frame.yaml                # is it stable? determinate? which DO
 engmech mass bracket.yaml --about A        # mass, cog, inertia tensors, principal axes
 engmech sweep beam.yaml --param "P=0 kN:20 kN:11" --output A.Fy,B.N --csv out.csv
 engmech validate --report validation.html  # qualify this installation
+engmech config                             # config file location and the report logo in use
 engmech schema -o engmech.schema.json      # JSON Schema for editor autocompletion
 ```
 
@@ -105,8 +165,8 @@ That makes model files usable as regression tests in CI.
 Input errors point at the line in the file:
 
 ```text
-error: frame.yaml:14:5: supports.B: unknown field 'nromal' (did you mean 'normal'?)
-error: frame.yaml:9:6: points.C: '[3 N, 4]' mixes bare numbers with explicit units ...
+error: frame.yaml:10:28: supports.B.roller: unknown field 'nromal' (did you mean 'normal'?)
+error: frame.yaml:7:3: points.C: ['3 N', 4] mixes bare numbers with explicit units; give every non-zero component a unit, or put one unit after the brackets
 ```
 
 ## Python
@@ -172,9 +232,10 @@ Every example states its hand calculation in its description, and its
 ## Verification
 
 engmech is verified against hand calculations and against independent,
-established software. [docs/validation.md](docs/validation.md) has the
-full evidence, the assumptions and limitations, and a procedure for using
-engmech inside a quality system. In brief:
+established software. The
+[verification and validation document](https://github.com/davidson-engineering/engineering-mechanics/blob/main/docs/validation.md)
+has the full evidence, the assumptions and limitations, and a procedure for
+using engmech inside a quality system. In brief:
 
 - **Hand calculations:** 22 benchmark models reproduce 122 hand-derived
   values. Ten of them were written and solved by a reviewer who never saw
@@ -192,25 +253,30 @@ engmech inside a quality system. In brief:
   cleanly.
 - **Your own installation:** `engmech validate --report validation.html`
   re-runs the benchmark suite on your machine and writes a pass/fail
-  report.
+  report. Every release also carries the validation reports of its wheel on
+  Linux, macOS and Windows.
 
 ## Documentation
 
-- [Input file reference](docs/input-format.md): every section, joint type,
-  load type and unit rule.
-- [Theory manual](docs/theory.md): equations, conventions, algorithms and
-  numerical tolerances.
-- [Verification and validation](docs/validation.md): evidence, limitations
-  and quality-system use.
+- [Input file reference](https://github.com/davidson-engineering/engineering-mechanics/blob/main/docs/input-format.md):
+  every section, joint type, load type and unit rule.
+- [Theory manual](https://github.com/davidson-engineering/engineering-mechanics/blob/main/docs/theory.md):
+  equations, conventions, algorithms and numerical tolerances.
+- [Verification and validation](https://github.com/davidson-engineering/engineering-mechanics/blob/main/docs/validation.md):
+  evidence, limitations and quality-system use.
 
 ## Development
 
 ```bash
 uv sync
 uv run pytest
-uv run ruff check src tests && uv run ruff format --check src tests
+uv run ruff check src tests scripts && uv run ruff format --check src tests scripts
 uv run engmech schema -o schema/engmech.schema.json   # after changing the file format
+uv run --with pillow python scripts/make_screenshots.py  # after changing the report's look
 ```
+
+[Releasing](https://github.com/davidson-engineering/engineering-mechanics/blob/main/docs/releasing.md)
+describes how versions are published to PyPI and GitHub.
 
 ## License
 

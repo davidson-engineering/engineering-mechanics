@@ -11,6 +11,7 @@ from plotly.offline import get_plotlyjs
 
 from engmech import __version__
 from engmech.report import tables as t
+from engmech.report.branding import UNSET, resolve_logo
 from engmech.report.figure import model_figure
 from engmech.results import Results
 from engmech.units import UnitSystem
@@ -24,9 +25,19 @@ _env = Environment(
 
 
 def render_report(
-    results: Results, units=None, source_path: str | None = None, plotly_cdn: bool = False
+    results: Results,
+    units=None,
+    source_path: str | None = None,
+    plotly_cdn: bool = False,
+    logo=UNSET,
 ) -> str:
+    """Render the HTML report. ``logo`` is an image path or URL, or None for
+    no logo; when omitted it comes from the model file, ENGMECH_LOGO or the
+    user config, and there is none if none of those set one (see
+    engmech.report.branding)."""
     units = results.model.output_units if units is None else UnitSystem.from_spec(units)
+    model_dir = Path(results.model.source_path).parent if results.model.source_path else None
+    brand = resolve_logo(logo, results.model.report_logo, model_dir)
     model = results.model
     cases = []
     for name, case in results.cases.items():
@@ -81,10 +92,17 @@ def render_report(
         facts.append(f"{n_joint} joint{'s' * (n_joint != 1)}")
     facts.append(f"{units.label('force')}, {units.label('length')}, {units.label('moment')}")
 
+    # the header carries only the opening paragraph; the rest of the description
+    # (hand calculations, assumptions) follows the results in its own section
+    blocks = _paragraphs(model.description)
+    lead = blocks[0][1] if blocks and blocks[0][0] == "p" else ""
+    notes_text = blocks[1:] if lead else blocks
+
     template = _env.get_template("report.html.j2")
     return template.render(
         title=model.name,
-        description=_paragraphs(model.description),
+        lead=lead,
+        notes_text=notes_text,
         facts=facts,
         source=source_path,
         generated=dt.datetime.now(dt.UTC).strftime("%Y-%m-%d %H:%M UTC"),
@@ -108,14 +126,18 @@ def render_report(
         planar=model.planar,
         gravity=_gravity_text(model, units),
         provenance=results.provenance(),
+        logo=brand,
         source_text=model.source_text,
         plotly_js=None if plotly_cdn else Markup(get_plotlyjs()),
     )
 
 
-def write_report(results: Results, path, units=None, source_path=None, plotly_cdn=False) -> Path:
+def write_report(
+    results: Results, path, units=None, source_path=None, plotly_cdn=False, logo=UNSET
+) -> Path:
     path = Path(path)
-    path.write_text(render_report(results, units, source_path, plotly_cdn), encoding="utf-8")
+    html = render_report(results, units, source_path, plotly_cdn, logo)
+    path.write_text(html, encoding="utf-8")
     return path
 
 
@@ -156,6 +178,8 @@ def _gravity_text(model, units: UnitSystem) -> str | None:
     )
 
 
-def render_validation(run) -> str:
+def render_validation(run, logo=UNSET) -> str:
     """HTML report of a validation run (see engmech.validation)."""
-    return _env.get_template("validation.html.j2").render(run=run, summary=run.summary())
+    return _env.get_template("validation.html.j2").render(
+        run=run, summary=run.summary(), logo=resolve_logo(logo)
+    )

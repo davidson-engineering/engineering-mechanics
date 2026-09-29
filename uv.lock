@@ -339,8 +339,7 @@ wheels = [
 ]
 
 [[package]]
-name = "engineering-mechanics"
-version = "0.3.0"
+name = "engmech"
 source = { editable = "." }
 dependencies = [
     { name = "click" },

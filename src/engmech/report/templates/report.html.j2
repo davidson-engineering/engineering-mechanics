@@ -35,20 +35,22 @@
 </head>
 <body>
 <main>
-<header class="page">
-  <p class="eyebrow">Rigid-body analysis report</p>
-  <h1>{{ title }}</h1>
-  {% if description %}<div class="lede">
-  {% for kind, text in description %}{% if kind == 'pre' %}<pre>{{ text }}</pre>{% else %}<p>{{ text }}</p>{% endif %}{% endfor %}
-  </div>{% endif %}
-  <ul class="chips">{% for f in facts %}<li>{{ f }}</li>{% endfor %}</ul>
-  <div class="meta">
-    {% if source %}Model <code>{{ source }}</code> · {% endif %}Generated {{ generated }} · engmech {{ version }}
+<header class="page masthead">
+  <div class="masthead-text">
+    <p class="eyebrow">Rigid-body analysis report</p>
+    <h1>{{ title }}</h1>
+    {% if lead %}<div class="lede"><p>{{ lead }}</p></div>{% endif %}
+    <ul class="chips">{% for f in facts %}<li>{{ f }}</li>{% endfor %}</ul>
+    <div class="meta">
+      {% if source %}Model <code>{{ source }}</code> · {% endif %}Generated {{ generated }} · engmech {{ version }}
+    </div>
   </div>
+  {% if logo %}<img class="logo" src="{{ logo.data_uri }}" alt="Logo">{% endif %}
 </header>
 
 <section class="card" id="summary">
   <div class="section-head"><h2>Summary</h2></div>
+  <div class="statuses">
   {% set good = cases | selectattr('style', 'equalto', 'good') | list %}
   {% if multi and good | length > 1 %}
   <div class="status good">
@@ -79,12 +81,12 @@
     <span class="text"><strong>{{ results.checks | length - failed | length }} of {{ results.checks | length }} checks passed</strong></span>
   </div>
   {% endif %}
-  {% if notes %}
-  <ul class="warnings">{% for n in notes %}<li>{{ n }}</li>{% endfor %}</ul>
-  {% endif %}
-  {% if mechanism %}
-  <p class="caption">Free motions of the mechanism:</p>
-  <ul class="modes">{% for mode in mechanism %}<li>{{ mode | join('; ') }}</li>{% endfor %}</ul>
+  </div>
+  {% if notes or mechanism %}
+  <ul class="summary-notes">
+    {% for n in notes %}<li>{{ n }}</li>{% endfor %}
+    {% for mode in mechanism %}<li>Free motion: {{ mode | join('; ') }}</li>{% endfor %}
+  </ul>
   {% endif %}
 </section>
 
@@ -102,6 +104,11 @@
     {% if c.redundancy %}<li>Arrows marked * show only the components that equilibrium determines.</li>{% endif %}
   </ul>
   {% endif %}
+  {% for tbl in c.tables %}
+  <h3>{{ tbl.title }}{% if tbl.units %} <span class="units">{{ tbl.units }}</span>{% endif %}</h3>
+  {{ table(tbl) }}
+  {% endfor %}
+  <h3>Free-body diagram</h3>
   <div class="figure"><div class="plot" id="fig-{{ loop.index }}"></div></div>
   <script>
     (function () {
@@ -113,10 +120,6 @@
       });
     })();
   </script>
-  {% for tbl in c.tables %}
-  <h3>{{ tbl.title }}{% if tbl.units %} <span class="units">{{ tbl.units }}</span>{% endif %}</h3>
-  {{ table(tbl) }}
-  {% endfor %}
   <details{% if not c.case.verified %} open{% endif %}>
     <summary>Equilibrium verification</summary>
     <div class="body">
@@ -137,6 +140,15 @@
 <section class="card" id="checks">
   <div class="section-head"><h2>Checks</h2></div>
   {{ table(checks) }}
+</section>
+{% endif %}
+
+{% if notes_text %}
+<section class="card" id="notes">
+  <div class="section-head"><h2>Notes</h2><span class="sub">from the model description</span></div>
+  <div class="notes">
+  {% for kind, text in notes_text %}{% if kind == 'pre' %}<pre>{{ text }}</pre>{% else %}<p>{{ text }}</p>{% endif %}{% endfor %}
+  </div>
 </section>
 {% endif %}
 

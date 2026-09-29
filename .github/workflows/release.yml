@@ -1,0 +1,111 @@
+name: release
+
+# Push a tag like v0.4.0 to release that version (see docs/releasing.md).
+# The distributions are built once, the wheel is tested and validated as
+# installed on every platform, and only then published.
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv build
+      - name: Tag matches the package version
+        run: |
+          wheel="dist/engmech-${GITHUB_REF_NAME#v}-py3-none-any.whl"
+          if [ ! -f "$wheel" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match the version built:" dist/*
+            exit 1
+          fi
+      - run: uvx twine check --strict dist/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  test:
+    name: Wheel on Python ${{ matrix.python-version }}, ${{ matrix.os }}
+    needs: build
+    runs-on: ${{ matrix.os }}
+    env:
+      PYTHONWARNDEFAULTENCODING: "1"
+      PYTHONUTF8: "0"
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.11", "3.14"]
+    steps:
+      - uses: actions/checkout@v4  # for the tests only; engmech itself comes from the wheel
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+          activate-environment: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - run: uv pip install dist/*.whl pytest hypothesis
+      - name: The tests import the installed wheel, not the source tree
+        run: python -c "import engmech, sys; print(engmech.__file__); sys.exit('site-packages' not in engmech.__file__)"
+      - run: pytest --ignore=tests/oracles -p no:cacheprovider
+      - name: Built-in validation suite
+        run: engmech validate --report validation-report-${{ matrix.os }}-py${{ matrix.python-version }}.html
+      - uses: actions/upload-artifact@v4
+        with:
+          name: validation-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: validation-report-*.html
+
+  publish:
+    name: Publish to PyPI
+    needs: test
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/engmech/
+    permissions:
+      id-token: write  # PyPI Trusted Publishing: no API token is stored anywhere
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+
+  github-release:
+    name: GitHub release
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: validation-*
+          path: validation/
+          merge-multiple: true
+      - name: Create the release, with notes generated from the merged pull requests
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          prerelease=""
+          if [[ "$GITHUB_REF_NAME" =~ (a|b|rc)[0-9]+$ ]]; then prerelease="--prerelease"; fi
+          gh release create "$GITHUB_REF_NAME" dist/* validation/*.html \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "engmech ${GITHUB_REF_NAME#v}" \
+            --generate-notes --verify-tag $prerelease
