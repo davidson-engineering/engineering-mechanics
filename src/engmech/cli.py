@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import csv
 import json
 import sys
@@ -113,6 +114,17 @@ def main():
 
     Start from an example:  engmech examples copy beam my-beam.yaml
     """
+    _utf8_streams()
+
+
+def _utf8_streams() -> None:
+    """Write UTF-8 even where the platform default cannot encode unit labels
+    (N·m, m²) and marks (✓): e.g. output redirected to a file on Windows."""
+    for stream in (sys.stdout, sys.stderr):
+        encoding = (getattr(stream, "encoding", None) or "").lower().replace("-", "")
+        if encoding != "utf8" and hasattr(stream, "reconfigure"):
+            with contextlib.suppress(ValueError, OSError):  # e.g. an already-used stream
+                stream.reconfigure(encoding="utf-8")
 
 
 @main.command()

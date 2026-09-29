@@ -116,3 +116,22 @@ def test_schema_command(tmp_path):
     out = tmp_path / "schema.json"
     run("schema", "-o", out)
     assert json.loads(out.read_text(encoding="utf-8"))["title"] == "engmech model"
+
+
+def test_output_is_utf8_when_redirected_with_a_legacy_encoding(beam):
+    """Windows encodes redirected output as cp1252, which cannot hold N·m or ✓."""
+    import os
+    import subprocess
+    import sys
+
+    env = {**os.environ, "PYTHONIOENCODING": "cp1252"}
+    proc = subprocess.run(
+        [sys.executable, "-m", "engmech.cli", "solve", str(beam)],
+        capture_output=True,
+        env=env,
+        check=False,
+    )
+    assert proc.returncode == 0, proc.stderr.decode("utf-8", "replace")
+    out = proc.stdout.decode("utf-8")
+    assert "✓ Equilibrium verified" in out
+    assert "kN" in out
