@@ -1,5 +1,6 @@
 import csv
 import json
+import re
 
 import pytest
 from click.testing import CliRunner
@@ -69,6 +70,26 @@ def test_report(beam, tmp_path):
     assert "<h1>Test beam</h1>" in html
     assert "Support reactions" in html
     assert "cdn.plot.ly" in html
+
+
+def test_report_up_axis(tmp_path):
+    from importlib import resources
+
+    def vertical_axis(html):
+        figure = json.loads(re.search(r"var fig = (\{.*?\});\n", html).group(1))
+        return figure["layout"]["scene"]["zaxis"]["title"]["text"]
+
+    boom = resources.files("engmech") / "examples" / "boom.yaml"
+    out = tmp_path / "r.html"
+    assert run("report", boom, "-o", out, "--cdn").exit_code == 0
+    assert vertical_axis(out.read_text(encoding="utf-8")) == "z (m)"
+    assert run("report", boom, "-o", out, "--cdn", "--up", "Y").exit_code == 0
+    assert vertical_axis(out.read_text(encoding="utf-8")) == "y (m)"
+    assert run("solve", boom, "--report", out, "--up", "-x").exit_code == 0
+    assert vertical_axis(out.read_text(encoding="utf-8")) == "x (m)"
+    result = CliRunner().invoke(main, ["report", str(boom), "-o", str(out), "--up", "q"])
+    assert result.exit_code == 1
+    assert "--up must be x, y or z" in result.output
 
 
 def test_check_and_mass(beam, tmp_path):

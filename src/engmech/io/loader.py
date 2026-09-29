@@ -20,6 +20,7 @@ from engmech.errors import InputError
 from engmech.io import schema as s
 from engmech.loads import DistributedLoad, Force, Moment, Motion, UnknownLoad
 from engmech.model import Check, Model
+from engmech.spatial import parse_axis_name
 
 
 @dataclass
@@ -283,6 +284,15 @@ def build_model(spec: s.ModelFile) -> Model:
         model.check(Check(**_plain(c.model_dump())))
     if "logo" in spec.report.model_fields_set:
         model.report_logo = "none" if spec.report.logo in (None, False) else spec.report.logo
+    if spec.report.up is not None:
+        if model.planar:
+            raise InputError("planar models are drawn in the xy-plane; up is for 3D", "report.up")
+        if parse_axis_name(spec.report.up) is None:
+            raise InputError(
+                f"must be x, y or z, optionally signed like -y; got {spec.report.up!r}",
+                "report.up",
+            )
+        model.report_up = spec.report.up
     return model
 
 

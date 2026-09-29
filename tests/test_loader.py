@@ -72,6 +72,18 @@ def test_build_errors_point_at_the_line():
     assert "xy-plane" in msgs[0]
 
 
+def test_report_up_axis_is_checked_where_it_is_written():
+    spatial = BEAM.replace("analysis: planar\n", "").replace("[0, 0]", "[0, 0, 0]")
+    spatial = spatial.replace("[6, 0]", "[6, 0, 0]").replace("[2, 0]", "[2, 0, 0]")
+    assert loads_model(spatial + "report: {up: Y}\n").report_up == "Y"
+    msgs = problems(spatial + "report: {up: w}\n")
+    assert msgs[0].startswith("m.yaml:12:"), msgs
+    assert "report.up: must be x, y or z" in msgs[0]
+    msgs = problems(BEAM + "report: {up: y}\n")
+    assert msgs[0].startswith("m.yaml:13:"), msgs
+    assert "up is for 3D" in msgs[0]
+
+
 def test_invalid_yaml_hint():
     msgs = problems("loads:\n  - {force: [0, -10] kN, at: [0, 0]}\n")
     assert "must be quoted" in msgs[0]

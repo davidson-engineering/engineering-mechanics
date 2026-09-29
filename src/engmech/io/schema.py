@@ -297,6 +297,12 @@ class ReportSpec(Strict):
         description="logo image for HTML reports: a file (relative to this file), an "
         "http(s) URL, or none",
     )
+    up: str | None = Field(
+        None,
+        description="axis that points up in 3D diagrams: z (the default), y or x, "
+        "optionally signed like -y",
+        json_schema_extra={"pattern": "^[+-]?[xyzXYZ]$"},
+    )
 
 
 class ModelFile(Strict):
