@@ -1,0 +1,45 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/davidson-engineering/engineering-mechanics/main/schema/engmech.schema.json
+name: Precessing gyroscope
+description: |
+  A 2 kg disc (radius 100 mm) spins at 150 rad/s about a horizontal shaft
+  whose other end sits in a ball joint O, 150 mm from the disc centre.
+  Gravity is balanced by gyroscopic action when the shaft precesses about
+  the vertical at Ω = m g l / (I_s ω_s) = 2 g l / (r² ω_s).
+
+  With that precession rate the only free motions (rotation about O) are
+  in dynamic balance, and the ball joint carries the weight plus the
+  centripetal force m Ω² l.
+    Ω = 1.9613 rad/s,  R = (-m Ω² l, 0, m g) = (-1.1540, 0, 19.613) N
+
+units: SI-mm
+gravity: -z
+
+parameters:
+  m: 2 kg
+  r: 100 mm
+  l: 150 mm
+  spin: 150 rad/s
+  g: 9.80665 m/s^2
+  Omega: 2*g*l/(r**2*spin)
+
+points:
+  O: [0, 0, 0]
+  G: [l, 0, 0]
+
+bodies:
+  rotor:
+    outline: [O, G]
+    shapes:
+      - {type: cylinder, mass: m, radius: r, length: 0, center: G, axis: +x}
+    motion:
+      angular_velocity: [spin, 0, Omega]
+      angular_acceleration: [0, Omega*spin, 0]
+      pivot: O
+
+supports:
+  O: {type: ball, at: O}
+
+checks:
+  - {target: O.Fx, expect: -1.154046 N}
+  - {target: O.Fy, expect: 0, tolerance: 1e-9 N}
+  - {target: O.Fz, expect: 19.6133 N}

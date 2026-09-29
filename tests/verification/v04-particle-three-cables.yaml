@@ -1,0 +1,45 @@
+name: Crate hung from three cables (concurrent forces)
+description: |
+  A 100 kg crate hangs from ring A at the origin, held by cables to B
+  (-4.5, 0, 6), C (3, 4, 12) and D (2, -3, 6) m. A 300 N pull on the ring
+  acts toward E (6, 2, -3).
+
+  Hand derivation (unit vectors):
+    u_AB = (-4.5, 0, 6)/7.5 = (-0.6, 0, 0.8)
+    u_AC = (3, 4, 12)/13
+    u_AD = (2, -3, 6)/7
+    P    = 300 (6, 2, -3)/7 = (257.143, 85.714, -128.571) N,  W = 980.665 N
+    x: -0.6 TB + 3/13 TC + 2/7 TD + 257.143 = 0
+    y:            4/13 TC - 3/7 TD +  85.714 = 0
+    z:  0.8 TB + 12/13 TC + 6/7 TD - 128.571 - 980.665 = 0
+    ->  TB = 701.610 N,  TC = 244.738 N,  TD = 375.709 N
+
+units: SI
+gravity: -z
+
+points:
+  A: [0, 0, 0]
+  B: [-4.5, 0, 6]
+  C: [3, 4, 12]
+  D: [2, -3, 6]
+  E: [6, 2, -3]
+
+bodies:
+  ring:
+    particle: true
+    mass: 100 kg
+    cog: A
+    loads:
+      - {name: P, force: {magnitude: 300 N, toward: E}, at: A}
+
+supports:
+  AB: {type: cable, body: ring, at: A, anchor: B}
+  AC: {type: cable, body: ring, at: A, anchor: C}
+  AD: {type: cable, body: ring, at: A, anchor: D}
+
+checks:
+  - {target: AB.T, expect: 701.6104119 N, tolerance: 0.001%}
+  - {target: AC.T, expect: 244.737693 N, tolerance: 0.001%}
+  - {target: AD.T, expect: 375.7091129 N, tolerance: 0.001%}
+  - {target: AB.Fx, expect: -420.9662471 N, tolerance: 0.001%}
+  - {target: AC.Fz, expect: 225.9117166 N, tolerance: 0.001%}

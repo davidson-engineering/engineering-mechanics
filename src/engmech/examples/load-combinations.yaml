@@ -1,0 +1,42 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/davidson-engineering/engineering-mechanics/main/schema/engmech.schema.json
+name: Beam with load cases and combinations
+description: |
+  A 6 m steel beam (150 kg/m) with superimposed dead load and live loads,
+  checked in an ultimate (1.2 D + 1.6 L) and a service (D + L) combination.
+
+  Hand check:
+    dead: (150 × 9.80665 / 1000 + 2) × 6 = 20.826 kN  ->  A = B = 10.413 kN
+    live: 3 × 6 = 18 kN plus 10 kN at 2 m             ->  A = 15.667 kN, B = 12.333 kN
+    ULS:  A = 1.2(10.413) + 1.6(15.667) = 37.562 kN
+
+analysis: planar
+units: {length: m, force: kN}
+gravity: {direction: -y, case: dead}
+
+points:
+  A: [0, 0]
+  B: [6, 0]
+
+bodies:
+  beam:
+    shapes: [{type: rod, density: 150 kg/m, start: A, end: B}]
+    loads:
+      - {name: finishes, case: dead, distributed: {start: A, end: B, intensity: 2, direction: -y}}
+      - {name: occupancy, case: live, distributed: {start: A, end: B, intensity: 3, direction: -y}}
+      - {name: equipment, case: live, force: [0, -10], at: [2, 0]}
+
+supports:
+  A: {type: pin, at: A}
+  B: {type: roller, at: B, normal: +y}
+
+combinations:
+  ULS: {dead: 1.2, live: 1.6}
+  SLS: {dead: 1.0, live: 1.0}
+
+checks:
+  - {target: A.Fy, case: dead, expect: 10.41300 kN}
+  - {target: A.Fy, case: live, expect: 15.66667 kN}
+  - {target: A.Fy, case: ULS, expect: 37.56226 kN}
+  - {target: B.N, case: ULS, expect: 32.22892 kN}
+  - {target: A.F, max: 40 kN, name: pin A capacity}
+  - {target: B.N, max: 40 kN, name: bearing B capacity}

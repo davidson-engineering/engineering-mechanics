@@ -1,0 +1,36 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/davidson-engineering/engineering-mechanics/main/schema/engmech.schema.json
+name: Boom held by two cables
+description: |
+  A 4 m boom with a ball-and-socket at A is held horizontal by cables BD
+  and BE and carries 5 kN at its tip B. Every force passes through the
+  line AB, so the boom's spin about its own axis is a harmless mechanism.
+
+  Hand check, with a = T_BD/√29 and b = T_BE/√29 (moments about A):
+    3a - 2b = 0,  2a + 3b = 5   ->  a = 10/13, b = 15/13
+    T_BD = 10√29/13 = 4.1424 kN,  T_BE = 15√29/13 = 6.2137 kN,  Ax = 100/13 kN
+
+units: {length: m, force: kN}
+
+points:
+  A: [0, 0, 0]
+  B: [4, 0, 0]
+  D: [0, 3, 2]
+  E: [0, -2, 3]
+
+bodies:
+  boom:
+    outline: [A, B]
+    loads:
+      - {name: W, force: [0, 0, -5], at: B}
+
+supports:
+  A: {type: ball, at: A}
+  BD: {type: cable, at: B, anchor: D}
+  BE: {type: cable, at: B, anchor: E}
+
+checks:
+  - {target: BD.T, expect: 4.142434 kN}
+  - {target: BE.T, expect: 6.213651 kN}
+  - {target: A.Fx, expect: 7.692308 kN}
+  - {target: A.Fy, expect: 0, tolerance: 1e-9 kN}
+  - {target: A.Fz, expect: 0, tolerance: 1e-9 kN}

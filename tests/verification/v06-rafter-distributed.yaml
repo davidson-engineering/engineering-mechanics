@@ -1,0 +1,40 @@
+name: Inclined rafter with snow and trapezoidal wind load
+description: |
+  A 5 m rafter runs from A (0,0) to B (4,3) (unit vector (0.8, 0.6)). It is
+  pinned at A and bears on a roller at B that pushes straight up.
+    snow: 2 kN/m per horizontal (projected) metre, acting -y
+    wind: 1 kN/m at A rising linearly to 3 kN/m at B, per metre of rafter,
+          acting normal to it along n = (0.6, -0.8)
+
+  Hand derivation:
+    snow  = 2 x 4 = 8 kN down at x = 2 m          -> moment about A = -16
+    wind  = (1 + 3)/2 x 5 = 10 kN = (6, -8) kN
+      centroid along AB:  s = L (w1 + 2 w2)/(3(w1 + w2)) = 5(7)/12 = 2.91667 m
+      at (2.33333, 1.75):  M_A = 2.33333(-8) - 1.75(6) = -29.16667
+    about A:  4 N - 16 - 29.16667 = 0   ->  N  = 11.29167 kN
+    Ax = -6 kN,   Ay = 8 + 8 - N = 4.70833 kN
+
+analysis: planar
+units: {length: m, force: kN}
+
+points:
+  A: [0, 0]
+  B: [4, 3]
+
+bodies:
+  rafter:
+    outline: [A, B]
+    loads:
+      - name: snow
+        distributed: {start: A, end: B, intensity: 2 kN/m, direction: -y, projected: true}
+      - name: wind
+        distributed: {start: A, end: B, intensity: {start: 1 kN/m, end: 3 kN/m}, direction: [0.6, -0.8]}
+
+supports:
+  A: {type: pin, at: A}
+  B: {type: roller, at: B, normal: +y}
+
+checks:
+  - {target: B.N, expect: 11.29166667 kN, tolerance: 0.001%}
+  - {target: A.Fx, expect: -6 kN, tolerance: 0.001%}
+  - {target: A.Fy, expect: 4.708333333 kN, tolerance: 0.001%}

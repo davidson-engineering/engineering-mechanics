@@ -1,99 +1,199 @@
-# Engineering Mechanics
+# engmech
 
-This repository provides a set of Python classes and tools to model and solve engineering mechanics problems, including statics, and dyanmics problems. This repository is aimed at supporting mechanical engineering calculations and simulations.
+Rigid-body statics, dynamics and mass properties for engineers.
 
-## Overview
+Describe a problem in a short YAML file with real units, solve it from the
+command line, and get support reactions, joint forces, member forces and
+actuator torques, each one verified against equilibrium, plus an
+interactive HTML report with free-body diagrams.
 
-This repository includes:
-- `BoundVector`: A class to represent vectors in 3D space with automatic alphabetical naming for ease in handling multiple vectors in calculations.
-- `Load`: A class containing a 6D bound vector to represent force and moment loading on a structure.
-- `Reaction`: A class to represent reaction loads with additional applied constraints.
-- **Statics Study**: Enables simplified workflow when working with multiple loadcases and configurations.
-- **Statics Calculations**: Utilities for constructing equilibrium matrices, solving for reactions, and ensuring stability within mechanical systems.
-- **Constraint Modeling**: Flexible constraint matrices that allow for complex and realistic modeling of supports, including coupled constraints.
+```yaml
+# beam.yaml
+analysis: planar
+units: {length: m, force: kN}
 
-### Statics and Constraints
-The statics tools provide utilities to:
-- Set up equilibrium matrices for multi-reaction systems.
-- Analyze whether a system is overconstrained or underconstrained.
-- Handle advanced constraint matrices with non-diagonal elements, suitable for inclined or coupled constraints.
+supports:
+  A: {type: pin, at: [0, 0]}
+  B: {type: roller, at: [6, 0], normal: +y}
 
-## Installation
-
-Clone this repository and install dependencies:
-
-```bash
-git clone https://github.com/davidson-engineering/engineering-mechanics.git
-cd engineering-mechanics
-pip install .
-```
-
-## Examples
-
-### Static Equilibrium Check
-
-For a fully constrained system with multiple reactions, you can construct an equilibrium matrix and check for overconstraints:
-
-```python
-import numpy as np
-from statics import StaticsStudy, Load, Reaction
-
-# Define forces and reactions here, then use create a StaticsStudy to solve
-loads = [
-    Load(
-        magnitude=np.array([0, 0, -100, 0, -10, 0]),
-        location=np.array([1, 0, 0]),
-        name="Load_A",
-    )
-]
-reactions = [
-    Reaction(
-        location=np.array([0, 0, 0]), constraint=np.eye(6), name="Fixed support"
-    ),
-]
-
-study = StaticsStudy(
-    name="Example Study",
-    description="Example study with one load and one reaction",
-    reactions=reactions,
-    loads=loads,
-)
-result = study.run()
-```
-
-One can also print a summary table using prettytable:
-
-```python
-result.print_summary()
+loads:
+  - {force: [0, -12], at: [2, 0]}
+  - {distributed: {start: [3, 0], end: [6, 0], intensity: 4 kN/m, direction: -y}}
 ```
 
 ```console
-Input loads Summary:
-+------+-------+-------+-------+------+------+---------+------+--------+------+
-| Load | Loc X | Loc Y | Loc Z |  Fx  |  Fy  |    Fz   |  Mx  |   My   |  Mz  |
-+------+-------+-------+-------+------+------+---------+------+--------+------+
-| F_a  |  1.00 |  0.00 |  0.00 | 0.00 | 0.00 | -100.00 | 0.00 | -10.00 | 0.00 |
-+------+-------+-------+-------+------+------+---------+------+--------+------+
-
-Constraints Summary:
-+---------------+-------------------+
-| Reaction      | Constraint Matrix |
-+---------------+-------------------+
-| Fixed support |   [1 0 0 0 0 0]   |
-|               |   [0 1 0 0 0 0]   |
-|               |   [0 0 1 0 0 0]   |
-|               |   [0 0 0 1 0 0]   |
-|               |   [0 0 0 0 1 0]   |
-|               |   [0 0 0 0 0 1]   |
-+---------------+-------------------+
-
-Reactions Summary:
-+---------------+-------+-------+-------+------+------+--------+------+--------+-------+
-| Reaction      | Loc X | Loc Y | Loc Z |  Fx  |  Fy  |   Fz   |  Mx  |   My   |   Mz  |
-+---------------+-------+-------+-------+------+------+--------+------+--------+-------+
-| Fixed support |  0.00 |  0.00 |  0.00 | 0.00 | 0.00 | 100.00 | 0.00 | -90.00 | 10.00 |
-+---------------+-------+-------+-------+------+------+--------+------+--------+-------+
+$ engmech solve beam.yaml
+✓ Equilibrium verified (max relative residual 1e-16)
+Support reactions  kN
+Support   Type     Fx   Fy   Resultant    N
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+A         pin       0   11          11
+B         roller    –   13          13   13
 ```
+
+## What it does
+
+- **Single-body and multi-body statics.** Beams, frames, machines, trusses,
+  linkages and 3D structures. Every body's equilibrium is written into one
+  global system and solved at once.
+- **Inverse dynamics.** Give each body's angular velocity and acceleration
+  (and the acceleration of its centre of gravity, or a pivot) and get the
+  joint forces and motor torques that motion requires, including the
+  gyroscopic terms (Newton-Euler).
+- **Mass properties.** Build bodies from rods, boxes, cylinders, tubes,
+  spheres, cones, point masses and CAD values, with holes as subtracted
+  shapes. You get mass, centre of gravity, inertia about any point, and
+  principal axes. Weights are applied automatically.
+- **Units everywhere.** Write `10 kN`, `250 mm`, `45 deg`, `300 rpm` or
+  `7850 kg/m^3`; bare numbers use the file's unit system. Every value is
+  checked for the right dimension, and output can use any unit system (SI,
+  SI-kN, SI-mm, US-in, US-ft or custom).
+- **Honest diagnostics.** Before solving, the equations are scaled so the
+  diagnosis does not depend on your units. If the supports cannot hold the
+  loads, it tells you which free motion the loads drive (for example "beam
+  rotates about the point (0, 0)"). If some reactions cannot be found from
+  equilibrium alone, they are marked indeterminate instead of guessed. Give
+  joints a stiffness and redundant forces are shared by least work, which
+  gives the elastic method for bolt groups and similar problems.
+- **Verification built in.** Each result is checked by summing every force
+  and moment on each body directly, independently of the solver. Files can
+  also carry `checks:` (hand calculations or design limits) that are
+  reported as pass or fail.
+- **Engineering conveniences.** Named points and parameters with
+  expressions (`[L*cos(theta), L*sin(theta)]`), load cases and combinations,
+  solved-for loads ("what force P holds this?"), actuated joints, cables
+  and contacts that warn when they go slack or lift off, parameter sweeps,
+  JSON/CSV export, and a JSON Schema for editor autocompletion.
+
+## Install
+
+```bash
+pip install git+https://github.com/davidson-engineering/engineering-mechanics.git
+# or, from a clone:
+uv sync        # development environment, then `uv run engmech ...`
+```
+
+Requires Python 3.11 or newer.
+
+## Command line
+
+```bash
+engmech examples list                      # bundled, hand-verified examples
+engmech examples copy frame my-frame.yaml  # start from one
+
+engmech solve my-frame.yaml                # reactions, joint forces, checks
+engmech solve my-frame.yaml -v             # plus loads, mass, verification tables
+engmech solve my-frame.yaml --set "P=15 kN" --units SI-mm
+engmech solve my-frame.yaml --json -       # machine-readable results
+
+engmech report my-frame.yaml --open        # HTML report with interactive diagrams
+engmech check my-frame.yaml                # is it stable? determinate? which DOF are free?
+engmech mass bracket.yaml --about A        # mass, cog, inertia tensors, principal axes
+engmech sweep beam.yaml --param "P=0 kN:20 kN:11" --output A.Fy,B.N --csv out.csv
+engmech schema -o engmech.schema.json      # JSON Schema for editor autocompletion
+```
+
+`engmech solve` exits with status 0 when everything is in equilibrium and
+all checks pass, 1 for input errors, and 2 when a check fails or the loads
+cannot be balanced. Add `--strict` to also fail on indeterminate results.
+That makes model files usable as regression tests in CI.
+
+Input errors point at the line in the file:
+
+```text
+error: frame.yaml:14:5: supports.B: unknown field 'nromal' (did you mean 'normal'?)
+error: frame.yaml:9:6: points.C: '[3 N, 4]' mixes bare numbers with explicit units ...
+```
+
+## Python
+
+The same model can be built in Python. Values accept the same forms as the
+file: numbers in the model's units, strings with units, or named points.
+
+```python
+import engmech as em
+
+m = em.Model("Three-hinged frame", planar=True, units={"length": "m", "force": "kN"})
+m.point("A", [0, 0])
+m.point("B", [6, 0])
+m.point("C", [3, 4])
+m.body("left")
+m.body("right")
+m.support("A", em.Pin(at="A"), body="left")
+m.support("B", em.Pin(at="B"), body="right")
+m.joint("C", em.Pin(at="C"), bodies=("left", "right"))
+m.load(em.Force([0, -12], at=[1.5, 2]), body="left")
+
+result = m.solve()
+result.show()                      # terminal tables
+result.primary["B"].force          # numpy array in SI (N)
+result.primary["C"].component("Fx")
+result.report("frame.html")        # HTML report
+model = em.load("frame.yaml")      # or load a file
+```
+
+## How to read the results
+
+- **Support reactions** are the force and moment *on the body from the
+  ground*, at the support point, in global axes.
+- **Joint forces** are reported on the "On" body from the "From" body. For
+  `bodies: [a, b]` that is the force on `b` from `a`; `a` receives the
+  opposite.
+- **N** is a normal (roller/contact) force, positive when pushing on the
+  body. **T** is the axial force in a link or cable, positive in tension.
+  **Drive** is the torque or force an actuated joint must supply.
+- A dash (–) means that connection cannot carry that component; `indet.`
+  means equilibrium alone cannot determine it.
+
+## Examples
+
+Every example states its hand calculation in its description, and its
+`checks:` hold the hand-derived answers. The test suite runs them all.
+
+| Example | Shows |
+|---|---|
+| `beam` | point, triangular and uniform loads, a couple |
+| `cantilever` | 3D fixed support, self-weight from rod shapes |
+| `frame` | three-hinged frame, joint forces, free-body views |
+| `truss` | method of joints with particles and links |
+| `boom` | 3D boom on a ball joint and two cables |
+| `shaft` | shaft on bearings with a solved-for gear force |
+| `slider-crank` | mechanism held by an actuated crank |
+| `robot-arm` | holding torques of a two-link arm |
+| `bolt-group` | eccentric bolt group by the elastic method (stiffness) |
+| `load-combinations` | dead/live cases, ULS/SLS combinations, capacity checks |
+| `motor-arm` | motor torque for an accelerating arm (dynamics) |
+| `gyroscope` | gyroscopic precession of a spinning disc (dynamics) |
+
+## Verification
+
+- The examples, plus ten further textbook problems in `tests/verification/`
+  that were written and hand-solved independently of the solver code,
+  must reproduce their hand calculations.
+- Property-based tests check the physics for thousands of random cases: a
+  fixed support cancels any load system's resultant; six arbitrary links
+  agree with an independently built linear system; answers are identical
+  in millimetres and metres; moving and rotating a whole model rotates its
+  reactions with it; equal-stiffness bolt groups reproduce the elastic
+  method for random layouts; composite inertia obeys the parallel-axis
+  theorem.
+- Dynamics tests cover a released pendulum (pivot force mg/4), centripetal
+  loads, gyroscopic moments and Newton's second law on a free body.
+
+## Documentation
+
+- [Input file reference](docs/input-format.md): every section, joint type,
+  load type and unit rule.
+
+## Development
+
+```bash
+uv sync
+uv run pytest
+uv run ruff check src tests && uv run ruff format --check src tests
+uv run engmech schema -o schema/engmech.schema.json   # after changing the file format
+```
+
 ## License
 
-This project is licensed under the MIT License.
+MIT

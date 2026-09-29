@@ -1,0 +1,38 @@
+name: Beam on a pin and an inclined roller
+description: |
+  A 6 m beam AB is pinned at A and rests at B on a roller whose track is
+  inclined at 30 deg, so the roller pushes along n = (cos120, sin120) =
+  (-0.5, 0.8660). Loads: 12 kN down at x = 2 m, an 8 kN force at -60 deg
+  (i.e. (4, -6.9282) kN) at x = 4 m and a 6 kN*m clockwise couple.
+
+  Hand derivation (moments about A, counter-clockwise positive):
+    6 (0.8660 N) - 12(2) + 4(-6.9282) - 6 = 0
+    5.19615 N = 24 + 27.7128 + 6     ->  N  = 11.10684 kN
+    Fx: Ax + 4 - 0.5 N = 0           ->  Ax = 1.55342 kN
+    Fy: Ay - 12 - 6.9282 + 0.8660 N  ->  Ay = 9.30940 kN
+
+analysis: planar
+units: {length: m, force: kN}
+
+points:
+  A: [0, 0]
+  B: [6, 0]
+
+bodies:
+  beam:
+    outline: [A, B]
+    loads:
+      - {name: P1, force: [0, -12 kN], at: [2, 0]}
+      - {name: P2, force: {magnitude: 8 kN, angle: -60 deg}, at: [4, 0]}
+      - {name: C, moment: -6 kN*m, at: [3, 0]}
+
+supports:
+  A: {type: pin, at: A}
+  B: {type: roller, at: B, normal: 120 deg}
+
+checks:
+  - {target: B.N, expect: 11.10683603 kN, tolerance: 0.001%}
+  - {target: B.Fx, expect: -5.553418013 kN, tolerance: 0.001%}
+  - {target: B.Fy, expect: 9.618802154 kN, tolerance: 0.001%}
+  - {target: A.Fx, expect: 1.553418013 kN, tolerance: 0.001%}
+  - {target: A.Fy, expect: 9.309401077 kN, tolerance: 0.001%}

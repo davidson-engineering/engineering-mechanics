@@ -1,0 +1,2658 @@
+{
+  "$defs": {
+    "BallJoint": {
+      "additionalProperties": false,
+      "properties": {
+        "body": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "the supported body (supports only)",
+          "title": "Body"
+        },
+        "bodies": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "[a, b] (joints only)",
+          "title": "Bodies"
+        },
+        "type": {
+          "enum": [
+            "ball",
+            "spherical"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "type": "array"
+            }
+          ],
+          "description": "A named point, or coordinates like [x, y, z] (planar: [x, y])",
+          "title": "At"
+        },
+        "stiffness": {
+          "default": null,
+          "title": "Stiffness"
+        }
+      },
+      "required": [
+        "type",
+        "at"
+      ],
+      "title": "BallJoint",
+      "type": "object"
+    },
+    "BearingJoint": {
+      "additionalProperties": false,
+      "properties": {
+        "body": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "the supported body (supports only)",
+          "title": "Body"
+        },
+        "bodies": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "[a, b] (joints only)",
+          "title": "Bodies"
+        },
+        "type": {
+          "const": "bearing",
+          "title": "Type",
+          "type": "string"
+        },
+        "at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "type": "array"
+            }
+          ],
+          "description": "A named point, or coordinates like [x, y, z] (planar: [x, y])",
+          "title": "At"
+        },
+        "axis": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "type": "array"
+            }
+          ],
+          "description": "'+x', '-y', 'z', a vector, or (planar) an angle like '30 deg'",
+          "title": "Axis"
+        },
+        "thrust": {
+          "default": false,
+          "description": "also carry force along the axis",
+          "title": "Thrust",
+          "type": "boolean"
+        },
+        "stiffness": {
+          "default": null,
+          "title": "Stiffness"
+        }
+      },
+      "required": [
+        "type",
+        "at",
+        "axis"
+      ],
+      "title": "BearingJoint",
+      "type": "object"
+    },
+    "BodySpec": {
+      "additionalProperties": false,
+      "properties": {
+        "mass": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "default": null,
+          "title": "Mass"
+        },
+        "cog": {
+          "anyOf": [
+            {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "type": "array"
+                }
+              ],
+              "description": "A named point, or coordinates like [x, y, z] (planar: [x, y])"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cog"
+        },
+        "inertia": {
+          "default": null,
+          "title": "Inertia"
+        },
+        "shapes": {
+          "items": {
+            "discriminator": {
+              "mapping": {
+                "box": "#/$defs/BoxShape",
+                "cone": "#/$defs/ConeShape",
+                "custom": "#/$defs/CustomShape",
+                "cylinder": "#/$defs/CylinderShape",
+                "disc": "#/$defs/CylinderShape",
+                "point": "#/$defs/PointShape",
+                "rod": "#/$defs/RodShape",
+                "sphere": "#/$defs/SphereShape"
+              },
+              "propertyName": "type"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/PointShape"
+              },
+              {
+                "$ref": "#/$defs/RodShape"
+              },
+              {
+                "$ref": "#/$defs/BoxShape"
+              },
+              {
+                "$ref": "#/$defs/CylinderShape"
+              },
+              {
+                "$ref": "#/$defs/SphereShape"
+              },
+              {
+                "$ref": "#/$defs/ConeShape"
+              },
+              {
+                "$ref": "#/$defs/CustomShape"
+              }
+            ]
+          },
+          "title": "Shapes",
+          "type": "array"
+        },
+        "particle": {
+          "default": false,
+          "description": "only forces act through a single point",
+          "title": "Particle",
+          "type": "boolean"
+        },
+        "motion": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Motion"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "outline": {
+          "anyOf": [
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "items": {
+                      "anyOf": [
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "type": "array"
+                  }
+                ],
+                "description": "A named point, or coordinates like [x, y, z] (planar: [x, y])"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "points to draw the body through",
+          "title": "Outline"
+        },
+        "loads": {
+          "items": {
+            "$ref": "#/$defs/LoadSpec"
+          },
+          "title": "Loads",
+          "type": "array"
+        }
+      },
+      "title": "BodySpec",
+      "type": "object"
+    },
+    "BoxShape": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "mass": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "default": null,
+          "title": "Mass"
+        },
+        "density": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "default": null,
+          "description": "mass per volume (rod: mass per length)",
+          "title": "Density"
+        },
+        "subtract": {
+          "default": false,
+          "description": "remove this shape (a hole or cut-out)",
+          "title": "Subtract",
+          "type": "boolean"
+        },
+        "type": {
+          "const": "box",
+          "title": "Type",
+          "type": "string"
+        },
+        "size": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "type": "array"
+            }
+          ],
+          "description": "edge lengths along the local x, y, z axes",
+          "title": "Size"
+        },
+        "center": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "type": "array"
+            }
+          ],
+          "description": "A named point, or coordinates like [x, y, z] (planar: [x, y])",
+          "title": "Center"
+        },
+        "orientation": {
+          "default": null,
+          "title": "Orientation"
+        }
+      },
+      "required": [
+        "type",
+        "size",
+        "center"
+      ],
+      "title": "BoxShape",
+      "type": "object"
+    },
+    "CheckSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "target": {
+          "description": "'<joint>.<component>' or '<body>.mass'",
+          "title": "Target",
+          "type": "string"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "case": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Case"
+        },
+        "expect": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "default": null,
+          "title": "Expect"
+        },
+        "tolerance": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "default": "0.1%",
+          "description": "absolute, or a percentage like '1%'",
+          "title": "Tolerance"
+        },
+        "max": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "default": null,
+          "title": "Max"
+        },
+        "min": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "default": null,
+          "title": "Min"
+        }
+      },
+      "required": [
+        "target"
+      ],
+      "title": "CheckSpec",
+      "type": "object"
+    },
+    "ConeShape": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "mass": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "default": null,
+          "title": "Mass"
+        },
+        "density": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "default": null,
+          "description": "mass per volume (rod: mass per length)",
+          "title": "Density"
+        },
+        "subtract": {
+          "default": false,
+          "description": "remove this shape (a hole or cut-out)",
+          "title": "Subtract",
+          "type": "boolean"
+        },
+        "type": {
+          "const": "cone",
+          "title": "Type",
+          "type": "string"
+        },
+        "radius": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "title": "Radius"
+        },
+        "height": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "title": "Height"
+        },
+        "base_center": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "type": "array"
+            }
+          ],
+          "description": "A named point, or coordinates like [x, y, z] (planar: [x, y])",
+          "title": "Base Center"
+        },
+        "axis": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "type": "array"
+            }
+          ],
+          "default": "+z",
+          "description": "from the base towards the apex",
+          "title": "Axis"
+        }
+      },
+      "required": [
+        "type",
+        "radius",
+        "height",
+        "base_center"
+      ],
+      "title": "ConeShape",
+      "type": "object"
+    },
+    "CustomJoint": {
+      "additionalProperties": false,
+      "properties": {
+        "body": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "the supported body (supports only)",
+          "title": "Body"
+        },
+        "bodies": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "[a, b] (joints only)",
+          "title": "Bodies"
+        },
+        "type": {
+          "const": "custom",
+          "title": "Type",
+          "type": "string"
+        },
+        "at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "type": "array"
+            }
+          ],
+          "description": "A named point, or coordinates like [x, y, z] (planar: [x, y])",
+          "title": "At"
+        },
+        "constrain": {
+          "items": {
+            "enum": [
+              "Fx",
+              "Fy",
+              "Fz",
+              "Mx",
+              "My",
+              "Mz"
+            ],
+            "type": "string"
+          },
+          "title": "Constrain",
+          "type": "array"
+        },
+        "orientation": {
+          "default": null,
+          "title": "Orientation"
+        },
+        "stiffness": {
+          "default": null,
+          "title": "Stiffness"
+        }
+      },
+      "required": [
+        "type",
+        "at",
+        "constrain"
+      ],
+      "title": "CustomJoint",
+      "type": "object"
+    },
+    "CustomShape": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "mass": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "default": null,
+          "title": "Mass"
+        },
+        "density": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "default": null,
+          "description": "mass per volume (rod: mass per length)",
+          "title": "Density"
+        },
+        "subtract": {
+          "default": false,
+          "description": "remove this shape (a hole or cut-out)",
+          "title": "Subtract",
+          "type": "boolean"
+        },
+        "type": {
+          "const": "custom",
+          "title": "Type",
+          "type": "string"
+        },
+        "cog": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "type": "array"
+            }
+          ],
+          "description": "A named point, or coordinates like [x, y, z] (planar: [x, y])",
+          "title": "Cog"
+        },
+        "inertia": {
+          "default": null,
+          "description": "[Ixx, Iyy, Izz] or a 3x3 tensor",
+          "title": "Inertia"
+        },
+        "about": {
+          "anyOf": [
+            {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "type": "array"
+                }
+              ],
+              "description": "A named point, or coordinates like [x, y, z] (planar: [x, y])"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "point the inertia is given about (default cog)",
+          "title": "About"
+        },
+        "orientation": {
+          "default": null,
+          "title": "Orientation"
+        }
+      },
+      "required": [
+        "type",
+        "cog"
+      ],
+      "title": "CustomShape",
+      "type": "object"
+    },
+    "CylinderShape": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "mass": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "default": null,
+          "title": "Mass"
+        },
+        "density": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "default": null,
+          "description": "mass per volume (rod: mass per length)",
+          "title": "Density"
+        },
+        "subtract": {
+          "default": false,
+          "description": "remove this shape (a hole or cut-out)",
+          "title": "Subtract",
+          "type": "boolean"
+        },
+        "type": {
+          "enum": [
+            "cylinder",
+            "disc"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "radius": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "title": "Radius"
+        },
+        "length": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "default": 0,
+          "description": "axial length; 0 for a thin disc",
+          "title": "Length"
+        },
+        "center": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "type": "array"
+            }
+          ],
+          "description": "A named point, or coordinates like [x, y, z] (planar: [x, y])",
+          "title": "Center"
+        },
+        "axis": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "type": "array"
+            }
+          ],
+          "default": "+z",
+          "description": "'+x', '-y', 'z', a vector, or (planar) an angle like '30 deg'",
+          "title": "Axis"
+        },
+        "inner_radius": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "default": 0,
+          "title": "Inner Radius"
+        }
+      },
+      "required": [
+        "type",
+        "radius",
+        "center"
+      ],
+      "title": "CylinderShape",
+      "type": "object"
+    },
+    "CylindricalJoint": {
+      "additionalProperties": false,
+      "properties": {
+        "body": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "the supported body (supports only)",
+          "title": "Body"
+        },
+        "bodies": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "[a, b] (joints only)",
+          "title": "Bodies"
+        },
+        "type": {
+          "const": "cylindrical",
+          "title": "Type",
+          "type": "string"
+        },
+        "at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "type": "array"
+            }
+          ],
+          "description": "A named point, or coordinates like [x, y, z] (planar: [x, y])",
+          "title": "At"
+        },
+        "axis": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "type": "array"
+            }
+          ],
+          "description": "'+x', '-y', 'z', a vector, or (planar) an angle like '30 deg'",
+          "title": "Axis"
+        },
+        "stiffness": {
+          "default": null,
+          "title": "Stiffness"
+        }
+      },
+      "required": [
+        "type",
+        "at",
+        "axis"
+      ],
+      "title": "CylindricalJoint",
+      "type": "object"
+    },
+    "Distributed": {
+      "additionalProperties": false,
+      "properties": {
+        "start": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "type": "array"
+            }
+          ],
+          "description": "A named point, or coordinates like [x, y, z] (planar: [x, y])",
+          "title": "Start"
+        },
+        "end": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "type": "array"
+            }
+          ],
+          "description": "A named point, or coordinates like [x, y, z] (planar: [x, y])",
+          "title": "End"
+        },
+        "intensity": {
+          "description": "force per length, or {start: w1, end: w2}",
+          "title": "Intensity"
+        },
+        "direction": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "type": "array"
+            }
+          ],
+          "description": "'+x', '-y', 'z', a vector, or (planar) an angle like '30 deg'",
+          "title": "Direction"
+        },
+        "projected": {
+          "default": false,
+          "description": "intensity per unit projected length (e.g. snow on a slope)",
+          "title": "Projected",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "start",
+        "end",
+        "intensity",
+        "direction"
+      ],
+      "title": "Distributed",
+      "type": "object"
+    },
+    "FixedJoint": {
+      "additionalProperties": false,
+      "properties": {
+        "body": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "the supported body (supports only)",
+          "title": "Body"
+        },
+        "bodies": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "[a, b] (joints only)",
+          "title": "Bodies"
+        },
+        "type": {
+          "enum": [
+            "fixed",
+            "weld"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "type": "array"
+            }
+          ],
+          "description": "A named point, or coordinates like [x, y, z] (planar: [x, y])",
+          "title": "At"
+        },
+        "orientation": {
+          "default": null,
+          "title": "Orientation"
+        },
+        "stiffness": {
+          "default": null,
+          "title": "Stiffness"
+        }
+      },
+      "required": [
+        "type",
+        "at"
+      ],
+      "title": "FixedJoint",
+      "type": "object"
+    },
+    "LinkJoint": {
+      "additionalProperties": false,
+      "properties": {
+        "body": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "the supported body (supports only)",
+          "title": "Body"
+        },
+        "bodies": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "[a, b] (joints only)",
+          "title": "Bodies"
+        },
+        "type": {
+          "enum": [
+            "link",
+            "strut",
+            "cable"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "at": {
+          "anyOf": [
+            {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "type": "array"
+                }
+              ],
+              "description": "A named point, or coordinates like [x, y, z] (planar: [x, y])"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "support: attachment point on the body",
+          "title": "At"
+        },
+        "anchor": {
+          "anyOf": [
+            {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "type": "array"
+                }
+              ],
+              "description": "A named point, or coordinates like [x, y, z] (planar: [x, y])"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "support: the fixed end",
+          "title": "Anchor"
+        },
+        "ends": {
+          "anyOf": [
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "items": {
+                      "anyOf": [
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "type": "array"
+                  }
+                ],
+                "description": "A named point, or coordinates like [x, y, z] (planar: [x, y])"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "joint: [point on a, point on b]",
+          "title": "Ends"
+        },
+        "stiffness": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "default": null,
+          "title": "Stiffness"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "LinkJoint",
+      "type": "object"
+    },
+    "LoadSpec": {
+      "additionalProperties": false,
+      "description": "One load: exactly one of force, moment, distributed or unknown.",
+      "properties": {
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "body": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Body"
+        },
+        "case": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Case"
+        },
+        "force": {
+          "default": null,
+          "description": "vector, or {magnitude, direction | angle | toward | along}",
+          "title": "Force"
+        },
+        "moment": {
+          "default": null,
+          "description": "vector, planar scalar, or {magnitude, axis}",
+          "title": "Moment"
+        },
+        "distributed": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Distributed"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "unknown": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "solve for this load's magnitude; give 'direction' or 'axis'",
+          "title": "Unknown"
+        },
+        "at": {
+          "anyOf": [
+            {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "type": "array"
+                }
+              ],
+              "description": "A named point, or coordinates like [x, y, z] (planar: [x, y])"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "At"
+        },
+        "direction": {
+          "anyOf": [
+            {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "type": "array"
+                }
+              ],
+              "description": "'+x', '-y', 'z', a vector, or (planar) an angle like '30 deg'"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Direction"
+        },
+        "axis": {
+          "anyOf": [
+            {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "type": "array"
+                }
+              ],
+              "description": "'+x', '-y', 'z', a vector, or (planar) an angle like '30 deg'"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Axis"
+        }
+      },
+      "title": "LoadSpec",
+      "type": "object"
+    },
+    "Motion": {
+      "additionalProperties": false,
+      "properties": {
+        "angular_velocity": {
+          "default": null,
+          "title": "Angular Velocity"
+        },
+        "angular_acceleration": {
+          "default": null,
+          "title": "Angular Acceleration"
+        },
+        "acceleration": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "acceleration of the centre of gravity",
+          "title": "Acceleration"
+        },
+        "pivot": {
+          "anyOf": [
+            {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "type": "array"
+                }
+              ],
+              "description": "A named point, or coordinates like [x, y, z] (planar: [x, y])"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "a point with known acceleration",
+          "title": "Pivot"
+        },
+        "pivot_acceleration": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pivot Acceleration"
+        },
+        "case": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Case"
+        }
+      },
+      "title": "Motion",
+      "type": "object"
+    },
+    "PinJoint": {
+      "additionalProperties": false,
+      "properties": {
+        "body": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "the supported body (supports only)",
+          "title": "Body"
+        },
+        "bodies": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "[a, b] (joints only)",
+          "title": "Bodies"
+        },
+        "type": {
+          "enum": [
+            "pin",
+            "revolute",
+            "hinge"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "type": "array"
+            }
+          ],
+          "description": "A named point, or coordinates like [x, y, z] (planar: [x, y])",
+          "title": "At"
+        },
+        "axis": {
+          "anyOf": [
+            {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "type": "array"
+                }
+              ],
+              "description": "'+x', '-y', 'z', a vector, or (planar) an angle like '30 deg'"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "rotation axis (planar: z)",
+          "title": "Axis"
+        },
+        "actuated": {
+          "default": false,
+          "description": "solve for the drive torque about the axis",
+          "title": "Actuated",
+          "type": "boolean"
+        },
+        "stiffness": {
+          "default": null,
+          "title": "Stiffness"
+        }
+      },
+      "required": [
+        "type",
+        "at"
+      ],
+      "title": "PinJoint",
+      "type": "object"
+    },
+    "PointShape": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "mass": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "default": null,
+          "title": "Mass"
+        },
+        "density": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "default": null,
+          "description": "mass per volume (rod: mass per length)",
+          "title": "Density"
+        },
+        "subtract": {
+          "default": false,
+          "description": "remove this shape (a hole or cut-out)",
+          "title": "Subtract",
+          "type": "boolean"
+        },
+        "type": {
+          "const": "point",
+          "title": "Type",
+          "type": "string"
+        },
+        "at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "type": "array"
+            }
+          ],
+          "description": "A named point, or coordinates like [x, y, z] (planar: [x, y])",
+          "title": "At"
+        }
+      },
+      "required": [
+        "type",
+        "at"
+      ],
+      "title": "PointShape",
+      "type": "object"
+    },
+    "RodShape": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "mass": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "default": null,
+          "title": "Mass"
+        },
+        "density": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "default": null,
+          "description": "mass per volume (rod: mass per length)",
+          "title": "Density"
+        },
+        "subtract": {
+          "default": false,
+          "description": "remove this shape (a hole or cut-out)",
+          "title": "Subtract",
+          "type": "boolean"
+        },
+        "type": {
+          "const": "rod",
+          "title": "Type",
+          "type": "string"
+        },
+        "start": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "type": "array"
+            }
+          ],
+          "description": "A named point, or coordinates like [x, y, z] (planar: [x, y])",
+          "title": "Start"
+        },
+        "end": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "type": "array"
+            }
+          ],
+          "description": "A named point, or coordinates like [x, y, z] (planar: [x, y])",
+          "title": "End"
+        }
+      },
+      "required": [
+        "type",
+        "start",
+        "end"
+      ],
+      "title": "RodShape",
+      "type": "object"
+    },
+    "RollerJoint": {
+      "additionalProperties": false,
+      "properties": {
+        "body": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "the supported body (supports only)",
+          "title": "Body"
+        },
+        "bodies": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "[a, b] (joints only)",
+          "title": "Bodies"
+        },
+        "type": {
+          "enum": [
+            "roller",
+            "contact"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "type": "array"
+            }
+          ],
+          "description": "A named point, or coordinates like [x, y, z] (planar: [x, y])",
+          "title": "At"
+        },
+        "normal": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "type": "array"
+            }
+          ],
+          "description": "direction the support pushes on the body",
+          "title": "Normal"
+        },
+        "stiffness": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "default": null,
+          "title": "Stiffness"
+        }
+      },
+      "required": [
+        "type",
+        "at",
+        "normal"
+      ],
+      "title": "RollerJoint",
+      "type": "object"
+    },
+    "SliderJoint": {
+      "additionalProperties": false,
+      "properties": {
+        "body": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "the supported body (supports only)",
+          "title": "Body"
+        },
+        "bodies": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "[a, b] (joints only)",
+          "title": "Bodies"
+        },
+        "type": {
+          "enum": [
+            "slider",
+            "prismatic"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "type": "array"
+            }
+          ],
+          "description": "A named point, or coordinates like [x, y, z] (planar: [x, y])",
+          "title": "At"
+        },
+        "axis": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "type": "array"
+            }
+          ],
+          "description": "'+x', '-y', 'z', a vector, or (planar) an angle like '30 deg'",
+          "title": "Axis"
+        },
+        "actuated": {
+          "default": false,
+          "description": "solve for the drive force along the axis",
+          "title": "Actuated",
+          "type": "boolean"
+        },
+        "stiffness": {
+          "default": null,
+          "title": "Stiffness"
+        }
+      },
+      "required": [
+        "type",
+        "at",
+        "axis"
+      ],
+      "title": "SliderJoint",
+      "type": "object"
+    },
+    "SphereShape": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "mass": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "default": null,
+          "title": "Mass"
+        },
+        "density": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "default": null,
+          "description": "mass per volume (rod: mass per length)",
+          "title": "Density"
+        },
+        "subtract": {
+          "default": false,
+          "description": "remove this shape (a hole or cut-out)",
+          "title": "Subtract",
+          "type": "boolean"
+        },
+        "type": {
+          "const": "sphere",
+          "title": "Type",
+          "type": "string"
+        },
+        "radius": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "title": "Radius"
+        },
+        "center": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "type": "array"
+            }
+          ],
+          "description": "A named point, or coordinates like [x, y, z] (planar: [x, y])",
+          "title": "Center"
+        },
+        "inner_radius": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "default": 0,
+          "title": "Inner Radius"
+        }
+      },
+      "required": [
+        "type",
+        "radius",
+        "center"
+      ],
+      "title": "SphereShape",
+      "type": "object"
+    },
+    "UniversalJoint": {
+      "additionalProperties": false,
+      "properties": {
+        "body": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "the supported body (supports only)",
+          "title": "Body"
+        },
+        "bodies": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "[a, b] (joints only)",
+          "title": "Bodies"
+        },
+        "type": {
+          "const": "universal",
+          "title": "Type",
+          "type": "string"
+        },
+        "at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "type": "array"
+            }
+          ],
+          "description": "A named point, or coordinates like [x, y, z] (planar: [x, y])",
+          "title": "At"
+        },
+        "axes": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string"
+                    }
+                  ]
+                },
+                "type": "array"
+              }
+            ],
+            "description": "'+x', '-y', 'z', a vector, or (planar) an angle like '30 deg'"
+          },
+          "title": "Axes",
+          "type": "array"
+        },
+        "stiffness": {
+          "default": null,
+          "title": "Stiffness"
+        }
+      },
+      "required": [
+        "type",
+        "at",
+        "axes"
+      ],
+      "title": "UniversalJoint",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "An engmech model file.",
+  "properties": {
+    "name": {
+      "default": "Untitled model",
+      "title": "Name",
+      "type": "string"
+    },
+    "description": {
+      "default": "",
+      "title": "Description",
+      "type": "string"
+    },
+    "analysis": {
+      "default": "spatial",
+      "enum": [
+        "spatial",
+        "planar"
+      ],
+      "title": "Analysis",
+      "type": "string"
+    },
+    "units": {
+      "default": null,
+      "description": "preset name or {length, force, mass, angle, time}",
+      "title": "Units"
+    },
+    "output_units": {
+      "default": null,
+      "title": "Output Units"
+    },
+    "parameters": {
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "number"
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "title": "Parameters",
+      "type": "object"
+    },
+    "gravity": {
+      "default": null,
+      "description": "'-z', a vector, or {direction, magnitude, case}",
+      "title": "Gravity"
+    },
+    "points": {
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "type": "array"
+          }
+        ],
+        "description": "A named point, or coordinates like [x, y, z] (planar: [x, y])"
+      },
+      "title": "Points",
+      "type": "object"
+    },
+    "bodies": {
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/BodySpec"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "title": "Bodies",
+      "type": "object"
+    },
+    "supports": {
+      "additionalProperties": {
+        "discriminator": {
+          "mapping": {
+            "ball": "#/$defs/BallJoint",
+            "bearing": "#/$defs/BearingJoint",
+            "cable": "#/$defs/LinkJoint",
+            "contact": "#/$defs/RollerJoint",
+            "custom": "#/$defs/CustomJoint",
+            "cylindrical": "#/$defs/CylindricalJoint",
+            "fixed": "#/$defs/FixedJoint",
+            "hinge": "#/$defs/PinJoint",
+            "link": "#/$defs/LinkJoint",
+            "pin": "#/$defs/PinJoint",
+            "prismatic": "#/$defs/SliderJoint",
+            "revolute": "#/$defs/PinJoint",
+            "roller": "#/$defs/RollerJoint",
+            "slider": "#/$defs/SliderJoint",
+            "spherical": "#/$defs/BallJoint",
+            "strut": "#/$defs/LinkJoint",
+            "universal": "#/$defs/UniversalJoint",
+            "weld": "#/$defs/FixedJoint"
+          },
+          "propertyName": "type"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/$defs/FixedJoint"
+          },
+          {
+            "$ref": "#/$defs/PinJoint"
+          },
+          {
+            "$ref": "#/$defs/BallJoint"
+          },
+          {
+            "$ref": "#/$defs/SliderJoint"
+          },
+          {
+            "$ref": "#/$defs/CylindricalJoint"
+          },
+          {
+            "$ref": "#/$defs/BearingJoint"
+          },
+          {
+            "$ref": "#/$defs/UniversalJoint"
+          },
+          {
+            "$ref": "#/$defs/RollerJoint"
+          },
+          {
+            "$ref": "#/$defs/LinkJoint"
+          },
+          {
+            "$ref": "#/$defs/CustomJoint"
+          }
+        ]
+      },
+      "title": "Supports",
+      "type": "object"
+    },
+    "joints": {
+      "additionalProperties": {
+        "discriminator": {
+          "mapping": {
+            "ball": "#/$defs/BallJoint",
+            "bearing": "#/$defs/BearingJoint",
+            "cable": "#/$defs/LinkJoint",
+            "contact": "#/$defs/RollerJoint",
+            "custom": "#/$defs/CustomJoint",
+            "cylindrical": "#/$defs/CylindricalJoint",
+            "fixed": "#/$defs/FixedJoint",
+            "hinge": "#/$defs/PinJoint",
+            "link": "#/$defs/LinkJoint",
+            "pin": "#/$defs/PinJoint",
+            "prismatic": "#/$defs/SliderJoint",
+            "revolute": "#/$defs/PinJoint",
+            "roller": "#/$defs/RollerJoint",
+            "slider": "#/$defs/SliderJoint",
+            "spherical": "#/$defs/BallJoint",
+            "strut": "#/$defs/LinkJoint",
+            "universal": "#/$defs/UniversalJoint",
+            "weld": "#/$defs/FixedJoint"
+          },
+          "propertyName": "type"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/$defs/FixedJoint"
+          },
+          {
+            "$ref": "#/$defs/PinJoint"
+          },
+          {
+            "$ref": "#/$defs/BallJoint"
+          },
+          {
+            "$ref": "#/$defs/SliderJoint"
+          },
+          {
+            "$ref": "#/$defs/CylindricalJoint"
+          },
+          {
+            "$ref": "#/$defs/BearingJoint"
+          },
+          {
+            "$ref": "#/$defs/UniversalJoint"
+          },
+          {
+            "$ref": "#/$defs/RollerJoint"
+          },
+          {
+            "$ref": "#/$defs/LinkJoint"
+          },
+          {
+            "$ref": "#/$defs/CustomJoint"
+          }
+        ]
+      },
+      "title": "Joints",
+      "type": "object"
+    },
+    "loads": {
+      "items": {
+        "$ref": "#/$defs/LoadSpec"
+      },
+      "title": "Loads",
+      "type": "array"
+    },
+    "combinations": {
+      "additionalProperties": {
+        "additionalProperties": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
+          ]
+        },
+        "type": "object"
+      },
+      "title": "Combinations",
+      "type": "object"
+    },
+    "checks": {
+      "items": {
+        "$ref": "#/$defs/CheckSpec"
+      },
+      "title": "Checks",
+      "type": "array"
+    }
+  },
+  "title": "engmech model",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

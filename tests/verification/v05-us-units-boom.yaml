@@ -1,0 +1,45 @@
+name: Boom and cable in US customary units
+description: |
+  A 12 ft boom AB is pinned to a wall at A and held horizontal by cable BC
+  to C, 9 ft above A. It weighs 80 lb (uniform), carries 600 lbf at B,
+  400 lbf at D (90 in from A) and a 1200 lbf*in clockwise couple.
+
+  Hand derivation (ft, lbf):  BC = (-12, 9), |BC| = 15, u = (-0.8, 0.6)
+    about A:  12 (0.6 T) - 600(12) - 400(7.5) - 80(6) - 100 = 0
+              7.2 T = 10780  ->  T = 1497.222 lbf = 6.65998 kN
+    Ax = 0.8 T = 1197.778 lbf
+    Ay = 600 + 400 + 80 - 0.6 T = 181.667 lbf
+
+analysis: planar
+units: {length: ft, force: lbf}
+gravity: -y
+
+parameters:
+  L: 12 ft
+  a: 90 in
+
+points:
+  A: [0, 0]
+  B: [L, 0]
+  C: [0, 9 ft]
+  D: [a, 0]
+
+bodies:
+  boom:
+    shapes:
+      - {type: rod, mass: 80 lb, start: A, end: B}
+    loads:
+      - {name: P, force: [0, -600 lbf], at: B}
+      - {name: Q, force: [0, -400 lbf], at: D}
+      - {name: M, moment: -1200 lbf*in, at: D}
+
+supports:
+  A: {type: pin, at: A}
+  BC: {type: cable, at: B, anchor: C}
+
+checks:
+  - {target: boom.mass, expect: 80 lb, tolerance: 0.001%}
+  - {target: BC.T, expect: 1497.222222 lbf, tolerance: 0.001%}
+  - {target: BC.T, expect: 6.659976252 kN, tolerance: 0.001%, name: cable tension in SI}
+  - {target: A.Fx, expect: 1197.777778 lbf, tolerance: 0.001%}
+  - {target: A.Fy, expect: 181.6666667 lbf, tolerance: 0.001%}

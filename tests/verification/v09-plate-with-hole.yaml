@@ -1,0 +1,53 @@
+name: Steel plate with a hole and a boss, on a hinge and a cable
+description: |
+  A steel plate (7850 kg/m^3) 800 x 500 x 20 mm, centred on (0.4, 0.25, 0),
+  has a 200 mm diameter through-hole centred at (0.55, 0.25) and a solid
+  100 mm diameter, 100 mm tall boss standing on it at (0.2, 0.25). It is
+  held horizontal by a hinge at A (0.4, 0, 0) with its axis along x (a
+  real revolute joint: it resists couples about y and z) and a cable
+  from corner C (0.8, 0.5, 0) to E (0.2, 0, 0.3).
+
+  Mass properties:
+    plate  7850(0.8)(0.5)(0.02)        = 62.8     kg at x = 0.40
+    hole  -7850 pi (0.1^2)(0.02)       = -4.93230 kg at x = 0.55
+    boss   7850 pi (0.05^2)(0.1)       =  6.16538 kg at x = 0.20
+    m = 64.03308 kg,  x_G = 23.64031/64.03308 = 0.369189 m,  y_G = 0.25
+    W = m g = 627.9500 N
+  Statics:  CE = (-0.6, -0.5, 0.3), |CE| = sqrt(0.7), u = (-0.71714, -0.59761, 0.35857)
+    about the x axis through A:  0.5 uz T - 0.25 W = 0  ->  T = 875.6344 N
+    F_A = -T u - (0, 0, -W) = (627.950, 523.292, 313.975) N
+    My = 0.4 uz T - (x_G - 0.4) W       = 144.9377 N*m
+    Mz = -T (0.4 uy - 0.5 ux)           = -104.6583 N*m
+
+units: SI
+gravity: -z
+
+parameters:
+  rho: 7850 kg/m^3
+
+points:
+  A: [0.4, 0, 0]
+  C: [0.8, 0.5, 0]
+  E: [0.2, 0, 0.3]
+
+bodies:
+  plate:
+    outline: [[0, 0, 0], [0.8, 0, 0], C, [0, 0.5, 0], [0, 0, 0]]
+    shapes:
+      - {type: box, name: plate, density: rho, size: [0.8, 0.5, 0.02], center: [0.4, 0.25, 0]}
+      - {type: cylinder, name: hole, density: rho, radius: 0.1, length: 0.02, center: [0.55, 0.25, 0], axis: +z, subtract: true}
+      - {type: cylinder, name: boss, density: rho, radius: 0.05, length: 0.1, center: [0.2, 0.25, 0.06], axis: +z}
+
+supports:
+  A: {type: hinge, at: A, axis: +x}
+  CE: {type: cable, at: C, anchor: E}
+
+checks:
+  - {target: plate.mass, expect: 64.03307512 kg, tolerance: 0.001%}
+  - {target: CE.T, expect: 875.6343782 N, tolerance: 0.001%}
+  - {target: A.Fx, expect: 627.9499561 N, tolerance: 0.001%}
+  - {target: A.Fy, expect: 523.2916301 N, tolerance: 0.001%}
+  - {target: A.Fz, expect: 313.974978 N, tolerance: 0.001%}
+  - {target: A.Mx, expect: 0 N*m, tolerance: 1e-9 N*m}
+  - {target: A.My, expect: 144.937729 N*m, tolerance: 0.001%}
+  - {target: A.Mz, expect: -104.658326 N*m, tolerance: 0.001%}

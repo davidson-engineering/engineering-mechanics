@@ -1,0 +1,59 @@
+name: Boom raised by a hydraulic cylinder
+description: |
+  A 4 m boom (rod, 50 kg/m) is pinned to the ground at A (0,0) and set at
+  30 deg; it carries 10 kN at its tip B. A hydraulic cylinder, made of a
+  barrel pinned to the ground at D and a rod pinned to the boom's
+  midpoint E, holds it up. D = E - (1.2, 1.6), so the cylinder axis is
+  u = (0.6, 0.8). The barrel-rod slider is actuated: its drive is the
+  cylinder force (on the rod from the barrel, along +u).
+
+  Hand derivation:  E = (1.73205, 1),  B = (3.46410, 2),
+    boom weight = 200 g = 1.96133 kN at E
+    boom about A:  F (0.8 Ex - 0.6 Ey) - 1.96133 Ex - 10 Bx = 0
+                   0.785641 F = 3.397123 + 34.641016   ->  F = 48.41672 kN
+    A = -(F u) + (0, 11.96133)   ->  Ax = -29.05003 kN,  Ay = -26.77204 kN
+    two-force cylinder: on boom from rod at E = F u = (29.05003, 38.73337) kN,
+      ground on barrel at D = F u,  slider side force and couple = 0
+
+analysis: planar
+units: {length: m, force: kN}
+gravity: -y
+
+parameters:
+  L: 4 m
+  th: 30 deg
+
+points:
+  A: [0, 0]
+  B: [L*cos(th), L*sin(th)]
+  E: [L/2*cos(th), L/2*sin(th)]
+  D: [L/2*cos(th) - 1.2 m, L/2*sin(th) - 1.6 m]
+  M: [L/2*cos(th) - 0.6 m, L/2*sin(th) - 0.8 m]
+
+bodies:
+  boom:
+    shapes: [{type: rod, density: 50 kg/m, start: A, end: B}]
+    loads:
+      - {name: P, force: {magnitude: 10 kN, direction: -y}, at: B}
+  barrel: {outline: [D, M]}
+  ram: {outline: [M, E]}
+
+supports:
+  A: {type: pin, body: boom, at: A}
+  D: {type: pin, body: barrel, at: D}
+
+joints:
+  cyl: {type: slider, bodies: [barrel, ram], at: M, axis: [0.6, 0.8], actuated: true}
+  E: {type: pin, bodies: [ram, boom], at: E}
+
+checks:
+  - {target: boom.mass, expect: 200 kg, tolerance: 0.001%}
+  - {target: cyl.drive, expect: 48.41671514 kN, tolerance: 0.001%}
+  - {target: A.Fx, expect: -29.05002908 kN, tolerance: 0.001%}
+  - {target: A.Fy, expect: -26.77204211 kN, tolerance: 0.001%}
+  - {target: E.Fx, expect: 29.05002908 kN, tolerance: 0.001%}
+  - {target: E.Fy, expect: 38.73337211 kN, tolerance: 0.001%}
+  - {target: D.Fx, expect: 29.05002908 kN, tolerance: 0.001%}
+  - {target: D.Fy, expect: 38.73337211 kN, tolerance: 0.001%}
+  - {target: cyl.Fx, expect: 29.05002908 kN, tolerance: 0.001%}
+  - {target: cyl.Mz, expect: 0 kN*m, tolerance: 1e-9 kN*m}
