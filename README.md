@@ -103,8 +103,10 @@ A report leads with the results:
 2. **Results** for each load case and combination: support reactions,
    joint forces and solved loads, then an interactive free-body diagram.
    Planar models are drawn with engineering support symbols; spatial models
-   in 3D. Two-force members are coloured by tension and compression, and a
-   dropdown switches between the whole model and each body on its own.
+   in 3D, with z up or, for models built with y or x up (as from CAD),
+   `report: {up: y}`. Two-force members are coloured by tension and
+   compression, and a dropdown switches between the whole model and each
+   body on its own.
 3. **Checks**, **notes** from the model's description (hand calculations,
    assumptions), and the **model** itself: determinacy, units, points,
    parameters and mass properties.

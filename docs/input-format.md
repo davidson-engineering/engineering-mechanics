@@ -39,7 +39,7 @@ editor using yaml-language-server, put this on the first line:
 | `loads` | Loads not listed under a body. |
 | `combinations` | Factored combinations of load cases. |
 | `checks` | Expected values and design limits to verify. |
-| `report` | HTML report settings (the logo). |
+| `report` | HTML report settings: the logo, and which axis points up in 3D diagrams. |
 
 ## Units and values
 
@@ -384,6 +384,7 @@ every case and combination. The CLI exits with status 2 if any check fails.
 ```yaml
 report:
   logo: ../brand/logo.png      # a file (relative to this model file), an https:// URL, or none
+  up: y                        # the axis that points up in 3D diagrams: z (default), y or x
 ```
 
 The logo appears at the top right of the HTML report and the validation
@@ -413,6 +414,21 @@ start of an escape sequence.
 
 Set `ENGMECH_CONFIG` to use a config file somewhere else, for example one
 shared by a team.
+
+### Up axis
+
+3D diagrams are drawn with z up unless `up` says otherwise. Models taken
+from CAD are often built with y up: `up: y` draws them upright, with x to
+the lower right and z out of the page, and dragging the diagram turns it
+about y, which stays vertical. A sign turns the view over (`up: -z`). `--up AXIS`
+on `engmech report` and `engmech solve --report` overrides the file for one
+run, and in Python `results.report(path, up="y")` and
+`results.figure(up="y")` do the same.
+
+`up` only changes the view. It does not change the direction of gravity:
+give that with `gravity`, for example `gravity: -y`. Planar models are
+always drawn in the xy-plane, so `up` is an error in a planar file (the
+`--up` option is ignored for them).
 
 ## Results and verification
 

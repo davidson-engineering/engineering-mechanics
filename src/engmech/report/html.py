@@ -30,18 +30,20 @@ def render_report(
     source_path: str | None = None,
     plotly_cdn: bool = False,
     logo=UNSET,
+    up=None,
 ) -> str:
     """Render the HTML report. ``logo`` is an image path or URL, or None for
     no logo; when omitted it comes from the model file, ENGMECH_LOGO or the
     user config, and there is none if none of those set one (see
-    engmech.report.branding)."""
+    engmech.report.branding). ``up`` is the axis that points up in 3D
+    diagrams; when omitted it comes from the model file, else z."""
     units = results.model.output_units if units is None else UnitSystem.from_spec(units)
     model_dir = Path(results.model.source_path).parent if results.model.source_path else None
     brand = resolve_logo(logo, results.model.report_logo, model_dir)
     model = results.model
     cases = []
     for name, case in results.cases.items():
-        fig = model_figure(results, case=name, units=units)
+        fig = model_figure(results, case=name, units=units, up=up)
         style, headline = t.status_summary(results, case)
         cases.append(
             {
@@ -133,10 +135,10 @@ def render_report(
 
 
 def write_report(
-    results: Results, path, units=None, source_path=None, plotly_cdn=False, logo=UNSET
+    results: Results, path, units=None, source_path=None, plotly_cdn=False, logo=UNSET, up=None
 ) -> Path:
     path = Path(path)
-    html = render_report(results, units, source_path, plotly_cdn, logo)
+    html = render_report(results, units, source_path, plotly_cdn, logo, up)
     path.write_text(html, encoding="utf-8")
     return path
 

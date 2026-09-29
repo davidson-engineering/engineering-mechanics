@@ -82,11 +82,19 @@ def _units(spec: str | None):
         _fail(str(exc))
 
 
-def _write_report(results, path, units, source, cdn, logo) -> None:
+def _write_report(results, path, units, source, cdn, logo, up) -> None:
     try:
-        results.report(path, units=units, source_path=source, plotly_cdn=cdn, logo=logo)
+        results.report(path, units=units, source_path=source, plotly_cdn=cdn, logo=logo, up=up)
     except InputError as exc:
         _fail(str(exc))
+
+
+def _up(value: str | None) -> str | None:
+    from engmech.spatial import parse_axis_name
+
+    if value is not None and parse_axis_name(value) is None:
+        _fail(f"--up must be x, y or z, optionally signed like -y; got {value!r}")
+    return value
 
 
 def _exit_code(results, strict: bool) -> int:
@@ -123,6 +131,10 @@ class _Group(click.Group):
 UNITS_HELP = "Display units: SI, SI-kN, SI-mm, US-in, US-ft (default: the file's output_units)."
 SET_HELP = "Override a parameter, e.g. --set 'P=12 kN'. Repeatable."
 LOGO_HELP = "Logo for the HTML report: an image file or http(s) URL (see 'engmech config')."
+UP_HELP = (
+    "Axis that points up in 3D diagrams: x, y or z, or signed like -y "
+    "(default: the model file's report.up, else z)."
+)
 
 
 def logo_options(command):
@@ -171,9 +183,13 @@ def _utf8_streams() -> None:
 @click.option("--report", "report", type=click.Path(dir_okay=False), help="Write an HTML report.")
 @click.option("--open", "open_report", is_flag=True, help="Open the HTML report when done.")
 @click.option("--strict", is_flag=True, help="Exit with status 2 if anything is indeterminate.")
+@click.option("--up", metavar="AXIS", help=UP_HELP)
 @logo_options
-def solve(file, sets, units, cases, verbose, json_out, report, open_report, strict, logo, no_logo):
+def solve(
+    file, sets, units, cases, verbose, json_out, report, open_report, strict, up, logo, no_logo
+):
     """Solve a model and print support reactions and joint forces."""
+    up = _up(up)
     model = _load(file)
     results = _solve(model, _overrides(sets))
     unit_system = _units(units)
@@ -195,7 +211,7 @@ def solve(file, sets, units, cases, verbose, json_out, report, open_report, stri
             console.print(f"[dim]wrote {json_out}[/]", soft_wrap=True)
     if report or open_report:
         path = Path(report or Path(file).with_suffix(".html"))
-        _write_report(results, path, unit_system, file, False, _logo_argument(logo, no_logo))
+        _write_report(results, path, unit_system, file, False, _logo_argument(logo, no_logo), up)
         if json_out != "-":
             console.print(f"[dim]wrote {path}[/]", soft_wrap=True)
         if open_report:
@@ -210,13 +226,15 @@ def solve(file, sets, units, cases, verbose, json_out, report, open_report, stri
 @click.option("--units", "units", metavar="SYSTEM", help=UNITS_HELP)
 @click.option("--open", "open_report", is_flag=True, help="Open the report in a browser.")
 @click.option("--cdn", is_flag=True, help="Load plotly from a CDN instead of embedding it.")
+@click.option("--up", metavar="AXIS", help=UP_HELP)
 @logo_options
-def report(file, output, sets, units, open_report, cdn, logo, no_logo):
+def report(file, output, sets, units, open_report, cdn, up, logo, no_logo):
     """Write a self-contained HTML report with an interactive 3D/2D diagram."""
+    up = _up(up)
     model = _load(file)
     results = _solve(model, _overrides(sets))
     path = Path(output or Path(file).with_suffix(".html"))
-    _write_report(results, path, _units(units), file, cdn, _logo_argument(logo, no_logo))
+    _write_report(results, path, _units(units), file, cdn, _logo_argument(logo, no_logo), up)
     console.print(f"wrote {path}", soft_wrap=True)
     if open_report:
         _open(path)

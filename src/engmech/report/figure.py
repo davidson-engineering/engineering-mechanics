@@ -14,10 +14,11 @@ from dataclasses import dataclass, field
 import numpy as np
 import plotly.graph_objects as go
 
+from engmech.errors import InputError
 from engmech.model import GROUND
 from engmech.results import CaseResult, Results
 from engmech.solver import ROW_NAMES
-from engmech.spatial import frame_from_axis
+from engmech.spatial import frame_from_axis, parse_axis_name
 from engmech.units import UnitSystem
 
 PALETTE = {
@@ -43,8 +44,9 @@ GROUP_NAMES = {
 }
 FONT = "Inter, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
 
-# Default 3D view, orthographic as in engineering drawings: x to the lower
-# right, y into the page, z up. Where the camera sits.
+# Default 3D view, orthographic as in engineering drawings, looking down from
+# the front right: where the camera sits, as components across the page, into
+# the page and up (see _camera). With z up: x to the lower right, y into the page.
 EYE = np.array([0.95, -1.05, 0.62])
 # Projected height of the scene box at the default view, in plotly's aspect
 # units: large enough to fill the plot, small enough to keep tick labels in.
@@ -886,7 +888,7 @@ def _rgba(hex_color: str, alpha: float) -> str:
 
 
 class _Spatial:
-    def __init__(self, results: Results, units: UnitSystem, views: list[View]):
+    def __init__(self, results: Results, units: UnitSystem, views: list[View], up: np.ndarray):
         self.results = results
         self.units = units
         self.views = views
@@ -909,7 +911,7 @@ class _Spatial:
         self.mmax = max(moments, default=0.0) or 1.0
         self.wmax = max(wmax, default=0.0) or 1.0
         self.head = 0.045 * self.L * self.f_len  # arrowhead length
-        self.right, self.up = _screen_axes(EYE)
+        self.right, self.up = _screen_axes(*_camera(up))
 
     def p(self, v) -> np.ndarray:
         return np.asarray(v, float) * self.f_len
@@ -1365,13 +1367,20 @@ class _Spatial:
 
 
 def model_figure(
-    results: Results, case: str | None = None, units=None, height: int = 620
+    results: Results, case: str | None = None, units=None, height: int = 620, up=None
 ) -> go.Figure:
+    """The free-body diagram. ``up`` is the axis that points up in a 3D view
+    ('x', 'y', 'z', or signed like '-y'); by default the model file's
+    report.up, else z. Planar models are always drawn in the xy-plane."""
     units = results.model.output_units if units is None else UnitSystem.from_spec(units)
     case_result = results.primary if case is None else results[case]
     views = _collect(results, case_result, units)
     planar = results.model.planar
-    painter = _Planar(results, units, views) if planar else _Spatial(results, units, views)
+    if planar:
+        painter = _Planar(results, units, views)
+    else:
+        view_up = up_axis(results.model.report_up if up is None else up)
+        painter = _Spatial(results, units, views, view_up)
     body_color = {n: BODY_COLORS[i % len(BODY_COLORS)] for i, n in enumerate(results.model.bodies)}
 
     fig = go.Figure()
@@ -1446,7 +1455,7 @@ def model_figure(
             ),
         )
     else:
-        right, up = _screen_axes(EYE)
+        right, up = _screen_axes(*_camera(view_up))  # the screen's axes, in model axes
         data_lo, data_hi = _scene_bounds(fig)
 
         def box(lo, hi):
@@ -1473,18 +1482,30 @@ def model_figure(
             lo, hi, ratio = box(
                 np.minimum(data_lo, labels.min(axis=0)), np.maximum(data_hi, labels.max(axis=0))
             )
-        axis = dict(
+        # Everything so far is in model axes. Plotly only turns a 3D view about
+        # its own z axis (its turntable ignores any other camera up), so each
+        # model axis is drawn on the plotly axis that runs the same way on
+        # screen: plotly's z carries the up axis, and an axis that runs the
+        # other way is drawn reversed (x, z, y with y up, z reversed).
+        shown, signs = _plotly_axes(view_up)
+        for tr in fig.data:
+            if tr.type in ("scatter3d", "mesh3d") and tr.x is not None:
+                xyz = (tr.x, tr.y, tr.z)
+                tr.x, tr.y, tr.z = (xyz[a] for a in shown)
+        base = dict(
             backgroundcolor="white", gridcolor="#e2e8f0", zerolinecolor="#cbd5e1", showspikes=False
         )
         # fewer ticks on shorter axes, whose labels would otherwise run together
         nticks = [int(n) for n in np.clip(np.round(9 * ratio / ratio.max()), 4, 9)]
+        axes = {}
+        for name, a, sign in zip(("xaxis", "yaxis", "zaxis"), shown, signs, strict=True):
+            span = [lo[a], hi[a]] if sign > 0 else [hi[a], lo[a]]
+            axes[name] = dict(title=f"{'xyz'[a]} ({L})", range=span, nticks=nticks[a], **base)
         layout.update(
             scene=dict(
-                xaxis=dict(title=f"x ({L})", range=[lo[0], hi[0]], nticks=nticks[0], **axis),
-                yaxis=dict(title=f"y ({L})", range=[lo[1], hi[1]], nticks=nticks[1], **axis),
-                zaxis=dict(title=f"z ({L})", range=[lo[2], hi[2]], nticks=nticks[2], **axis),
+                **axes,
                 aspectmode="manual",
-                aspectratio=dict(x=ratio[0], y=ratio[1], z=ratio[2]),
+                aspectratio=dict(x=ratio[shown[0]], y=ratio[shown[1]], z=ratio[shown[2]]),
                 camera=dict(
                     eye=dict(x=EYE[0], y=EYE[1], z=EYE[2]),
                     up=dict(x=0, y=0, z=1),
@@ -1563,11 +1584,47 @@ def _label_boxes(fig: go.Figure, right, up, per_px: float) -> np.ndarray:
     return np.array(corners) if corners else np.zeros((0, 3))
 
 
-def _screen_axes(eye) -> tuple[np.ndarray, np.ndarray]:
+def up_axis(value=None) -> np.ndarray:
+    """The unit vector of an up axis given as 'x', 'y', 'z' or signed like
+    '-y' (any case); z when None."""
+    if value is None:
+        return np.array([0.0, 0.0, 1.0])
+    axis = parse_axis_name(value) if isinstance(value, str) else None
+    if axis is None:
+        raise InputError(f"up axis must be x, y or z, optionally signed like -y; got {value!r}")
+    return axis + 0.0  # -0.0 components (from '-x') become 0.0
+
+
+def _view_axes(up) -> np.ndarray:
+    """The model axes that run across the page, into the page and up in the
+    3D view (rows). The view is the same for every up axis, as for a rotated
+    model: x runs across (y when x is up) and the third axis completes a
+    right-handed set. With y up, x runs to the lower right and z out of the
+    page, as in CAD."""
+    up = np.asarray(up, float)
+    across = np.array([0.0, 1.0, 0.0]) if abs(up[0]) > 0.5 else np.array([1.0, 0.0, 0.0])
+    return np.array([across, np.cross(up, across), up]) + 0.0
+
+
+def _camera(up) -> tuple[np.ndarray, np.ndarray]:
+    """Eye position and up vector of the default 3D view, in model axes."""
+    across, into, up = _view_axes(up)
+    return EYE[0] * across + EYE[1] * into + EYE[2] * up, up
+
+
+def _plotly_axes(up) -> tuple[list[int], list[float]]:
+    """For plotly's x, y and z axes: the model axis each one shows (0, 1, 2
+    for x, y, z) and +1, or -1 where that model axis runs the other way."""
+    rows = _view_axes(up)
+    shown = [int(np.argmax(np.abs(r))) for r in rows]
+    return shown, [float(r[a]) for r, a in zip(rows, shown, strict=True)]
+
+
+def _screen_axes(eye, up) -> tuple[np.ndarray, np.ndarray]:
     """Screen right and screen up, as unit vectors in model axes, for a camera
-    at ``eye`` looking at the centre of the scene with z up."""
+    at ``eye`` looking at the centre of the scene with ``up`` vertical."""
     view = -np.asarray(eye, float) / np.linalg.norm(eye)
-    right = np.cross(view, [0.0, 0.0, 1.0])
+    right = np.cross(view, up)
     right /= np.linalg.norm(right)
     return right, np.cross(right, view)
 
