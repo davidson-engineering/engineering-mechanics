@@ -84,11 +84,6 @@ def transport_moment(force, moment, from_point, to_point) -> np.ndarray:
     return np.asarray(moment, dtype=float) + np.cross(r, force)
 
 
-def is_parallel(a, b) -> bool:
-    a, b = unit(a), unit(b)
-    return np.linalg.norm(np.cross(a, b)) < 1e-7
-
-
 def rotation_about_axis(axis, angle: float) -> np.ndarray:
     """Rodrigues rotation matrix."""
     k = unit(axis, "rotation axis")

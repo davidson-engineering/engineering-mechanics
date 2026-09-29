@@ -1,4 +1,5 @@
 import math
+import re
 
 import numpy as np
 import pytest
@@ -138,3 +139,74 @@ def test_unit_systems():
 )
 def test_format_number(x, text):
     assert format_number(x) == text
+
+
+@pytest.mark.parametrize(
+    ("text", "unit", "value"),
+    [
+        ("+5 m", "m", 5),
+        ("-(2 m)", "m", -2),
+        ("abs(-3 kN)", "N", 3000),
+        ("hypot(3 m, 400 cm)", "m", 5),
+        ("atan2(1 m, 100 cm)", "rad", math.pi / 4),
+        ("acos(0)", "rad", math.pi / 2),
+        ("tan(45 deg)", "", 1),
+        ("2**3 m", "m", 8),
+        ("(2 m)**2", "m**2", 4),
+        ("10 kN / 2 m", "N/m", 5000),
+        ("-10 kN / 2 m", "N/m", -5000),
+        ("100 N / 4 s", "N/s", 25),
+        ("9.81 m/s**2 * 2 kg", "N", 19.62),
+        ("1 kg*m**2 / 2 s**-1", "kg*m**2*s", 0.5),
+        ("P / 2 m", "N/m", 3000),
+        ("pi", "", math.pi),
+        ("3 ft", "m", 0.9144),
+    ],
+)
+def test_expression_operators_and_functions(text, unit, value):
+    q = evaluate(text, {"P": evaluate("6 kN")})
+    assert q.to(unit).magnitude == pytest.approx(value)
+
+
+@pytest.mark.parametrize(
+    ("text", "message"),
+    [
+        ("((1 m", "cannot parse"),
+        ("1 +", "cannot parse"),
+        ("for 3", "cannot use 'for'"),
+        ("2 foo", "unknown unit 'foo'"),
+        ("[1, 2]", "unsupported syntax"),
+        ("1 < 2", "unsupported syntax"),
+        ("'text'", "unexpected value"),
+        ("True", "cannot use 'True'"),
+        ("max(1, 2)", "unknown function 'max'"),
+        ("sin(x=30 deg)", "keyword arguments"),
+        ("atan2(1 m)", "takes 2 argument"),
+        ("sin(3 m)", "needs an angle"),
+        ("asin(2 m)", "needs a plain number"),
+        ("atan2(1 m, 1 s)", "same dimension"),
+        ("(2 m)**(1 m)", "exponent must be a plain number"),
+        ("1 m / 0", "division by zero"),
+        ("1 m + 1 s", "cannot add or subtract"),
+        ("1 % 2", "unsupported operator"),
+        ("~1", "unsupported operator"),
+    ],
+)
+def test_expression_errors(text, message):
+    with pytest.raises(InputError, match=re.escape(message)):
+        evaluate(text)
+
+
+def test_bare_number_in_a_parameter_sum_takes_the_system_unit():
+    p = evaluate_parameters({"r": "50 mm", "a": "r + 3"}, units=UnitSystem.from_spec("SI-mm"))
+    assert p["a"].to("mm").magnitude == pytest.approx(53)
+    # a sum with a quantity kind the system has no unit for stays an error
+    with pytest.raises(InputError, match="cannot add"):
+        evaluate("1 A + 2", units=UnitSystem())
+
+
+def test_unknown_kind_is_a_programming_error():
+    from engmech.units import kind
+
+    with pytest.raises(ValueError, match="unknown quantity kind"):
+        kind("speediness")

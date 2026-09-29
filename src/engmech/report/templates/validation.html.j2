@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="engmech {{ run.environment.engmech }}">
+<title>engmech validation report</title>
+<style>
+{% include "style.css" %}
+  .verdict { font-size: 18px; }
+  td.detail { color: var(--ink-2); }
+  td.result { white-space: nowrap; }
+</style>
+</head>
+<body>
+<main>
+<header class="page">
+  <p class="eyebrow">Software validation report</p>
+  <h1>engmech {{ run.environment.engmech }}</h1>
+  <p class="lede">Results of the built-in validation suite, run on this installation. Every benchmark model must reproduce its hand-derived answers and pass the independent equilibrium check; every property check compares seeded random cases with an independent computation.</p>
+  <div class="meta">Run {{ run.started.replace('T', ' ').replace('+00:00', '') }} UTC · {{ '%.1f' | format(run.seconds) }} s · seed {{ run.seed }}</div>
+</header>
+
+<section class="card">
+  <div class="section-head"><h2>Result</h2></div>
+  <div class="status {{ 'good' if run.passed else 'bad' }}">
+    <span class="mark">{{ '✓' if run.passed else '✗' }}</span>
+    <span class="text"><strong class="verdict">{{ 'PASS: all validation cases passed' if run.passed else 'FAIL: some validation cases failed' }}</strong>
+      <span class="case">{% for suite, s in summary.items() %}{{ s.passed }}/{{ s.cases }} {{ suite }} cases ({{ s.checks }} comparisons){{ ' · ' if not loop.last }}{% endfor %}</span>
+    </span>
+  </div>
+</section>
+
+{% for suite, title, blurb in [('benchmark', 'Benchmark models', 'Bundled examples and benchmark problems. Each states its hand derivation in its description; the listed number of hand-derived values must be reproduced within the stated tolerances (0.1 % unless the model says otherwise), and every load case must pass the per-body equilibrium check.'), ('property', 'Property checks', 'Seeded random cases compared with computations that do not use the solver: closed-form mechanics, or linear systems built independently. The largest relative error over all cases must be below the limit shown.')] %}
+<section class="card">
+  <div class="section-head"><h2>{{ title }}</h2></div>
+  <p class="caption">{{ blurb }}</p>
+  <div class="table-wrap">
+  <table class="data">
+    <thead><tr><th>Case</th><th>Description</th><th class="num">Comparisons</th><th>Evidence</th><th>Result</th></tr></thead>
+    <tbody>
+    {% for o in run.outcomes if o.suite == suite %}
+      <tr>
+        <td class="strong">{{ o.name }}</td>
+        <td>{{ o.description }}</td>
+        <td class="num">{{ o.checks }}</td>
+        <td class="detail">{{ o.detail }}</td>
+        <td class="result {{ 'good' if o.passed else 'bad' }}">{{ '✓ PASS' if o.passed else '✗ FAIL' }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+{% endfor %}
+
+<section class="card">
+  <div class="section-head"><h2>Environment</h2></div>
+  <dl class="facts">
+    <dt>engmech</dt><dd>{{ run.environment.engmech }}</dd>
+    <dt>Python</dt><dd>{{ run.environment.python }}</dd>
+    <dt>Platform</dt><dd>{{ run.environment.platform }}</dd>
+    <dt>Libraries</dt><dd>{% for k, v in run.environment.libraries.items() %}{{ k }} {{ v }}{{ ', ' if not loop.last }}{% endfor %}</dd>
+  </dl>
+</section>
+
+<section class="card method">
+  <div class="section-head"><h2>Scope</h2></div>
+  <p>This suite shows that this installation reproduces the documented results of engmech's rigid-body statics, inverse dynamics and mass-property calculations. It does not establish that a rigid-body model is appropriate for a particular structure or machine: that remains the responsibility of the engineer using the results. See the validation document (docs/validation.md) for the full verification basis, including cross-checks against independent finite-element, multibody and mesh-integration software, and for the assumptions and limitations of the method.</p>
+</section>
+<footer>engmech {{ run.environment.engmech }} · {{ run.started.replace('T', ' ').replace('+00:00', '') }} UTC</footer>
+</main>
+</body>
+</html>

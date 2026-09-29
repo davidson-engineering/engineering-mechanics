@@ -15,9 +15,10 @@ from engmech.diagnostics import (
 from engmech.errors import InputError
 from engmech.loads import AppliedWrench
 from engmech.model import GROUND, BuiltModel, ResolvedCheck
-from engmech.solver import ROW_NAMES, Analysis, CaseSolution, System
+from engmech.solver import COND_WARN, ROW_NAMES, Analysis, CaseSolution, System
 
 EQUILIBRIUM_TOL = 1e-6
+BALANCE_FLOOR = 1e-6  # see _balance
 
 
 @dataclass
@@ -124,6 +125,7 @@ class Results:
     mechanism: list[list[BodyMotion]]
     notes: list[str]
     checks: list[CheckResult]
+    sensitivity: str | None = None  # warning when the supports nearly allow a free motion
 
     def __getitem__(self, name: str) -> CaseResult:
         try:
@@ -143,6 +145,12 @@ class Results:
     def status(self) -> str:
         order = {"ok": 0, "indeterminate": 1, "unbalanced": 2}
         return max((c.status for c in self.cases.values()), key=order.__getitem__)
+
+    def provenance(self) -> dict:
+        """Software versions, platform and input-file hash behind these results."""
+        from engmech.provenance import provenance
+
+        return provenance(self.model)
 
     @property
     def ok(self) -> bool:
@@ -193,8 +201,25 @@ def build_results(system: System, analysis: Analysis, solutions: dict) -> Result
         )
     notes += kinematic_warnings(model)
     results = Results(model, system, analysis, cases, mechanism, notes, [])
+    results.sensitivity = _sensitivity(system, analysis)
     results.checks = evaluate_checks(results)
     return results
+
+
+def _sensitivity(system: System, analysis: Analysis) -> str | None:
+    """Explain an ill-conditioned model: which motion the supports barely resist."""
+    cond = analysis.condition_number
+    if analysis.rank == 0 or not cond > COND_WARN:
+        return None
+    units = system.model.output_units
+    weakest = describe_mechanism_mode(system, analysis.U[:, analysis.rank - 1])
+    motion = "; ".join(m.describe(units, system.model.planar) for m in weakest)
+    return (
+        f"Ill-conditioned supports (condition number {cond:.2g}): the supports barely resist "
+        f"a motion ({motion}). Reactions can be much larger than the loads and change a lot "
+        "with small changes in geometry or support flexibility. Check the geometry, or add "
+        "bracing against that motion."
+    )
 
 
 def _case_result(system, analysis, name, kind, factors, sol: CaseSolution) -> CaseResult:
@@ -358,10 +383,16 @@ def _factored(w: AppliedWrench, factors: dict[str, float]) -> AppliedWrench:
 
 
 def _balance(system: System, joints: dict[str, JointResult], loads) -> list[BodyBalance]:
-    """Independent equilibrium check: sum every wrench on every body directly."""
+    """Independent equilibrium check: sum every wrench on every body directly.
+
+    Each body's residual is measured against the forces acting on it, but never
+    against less than ``BALANCE_FLOOR`` of the largest body's forces: all bodies
+    are solved together, so round-off is relative to the model's largest forces,
+    and a body carrying only tiny forces cannot be held to a tighter standard.
+    """
     model = system.model
     L = system.length
-    out = []
+    sums = []
     for name, body in model.bodies.items():
         rows = {c for (b, c) in system.rows if b == name}
         attached = [j for j in joints.values() if name in (j.body_a, j.body_b)]
@@ -383,8 +414,13 @@ def _balance(system: System, joints: dict[str, JointResult], loads) -> list[Body
         residual = np.concatenate([F, M])
         mask = np.array([c in rows for c in range(6)])
         residual[~mask] = 0.0
+        sums.append((name, residual, magnitude))
+    largest = max((mag for *_, mag in sums), default=0.0)
+    out = []
+    for name, residual, magnitude in sums:
         scaled = np.concatenate([residual[:3], residual[3:] / L])
-        relative = float(np.linalg.norm(scaled) / magnitude) if magnitude > 0 else 0.0
+        denominator = max(magnitude, BALANCE_FLOOR * largest)
+        relative = float(np.linalg.norm(scaled) / denominator) if denominator > 0 else 0.0
         out.append(
             BodyBalance(name, residual[:3], residual[3:], relative, relative <= EQUILIBRIUM_TOL)
         )

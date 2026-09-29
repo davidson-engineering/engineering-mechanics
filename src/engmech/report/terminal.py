@@ -148,6 +148,8 @@ def print_results(
         mass = t.mass_table(results.model, units)
         if mass:
             console.print(render_table(mass))
+    if results.sensitivity:
+        console.print(Text(f"! {results.sensitivity}", style="yellow"))
     for note in results.notes + t.dropped_notes(results):
         console.print(Text(f"note: {note}", style="dim"))
     for mode in results.mechanism if results.analysis.degrees_of_freedom <= 3 else []:

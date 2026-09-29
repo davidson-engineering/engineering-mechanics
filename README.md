@@ -58,7 +58,10 @@ B         roller    –   13          13   13
 - **Verification built in.** Each result is checked by summing every force
   and moment on each body directly, independently of the solver. Files can
   also carry `checks:` (hand calculations or design limits) that are
-  reported as pass or fail.
+  reported as pass or fail, and `engmech validate` confirms that an
+  installation reproduces the documented benchmark results.
+- **Traceable.** Reports and JSON record the engmech and library versions,
+  platform, parameter overrides and the input file's SHA-256.
 - **Engineering conveniences.** Named points and parameters with
   expressions (`[L*cos(theta), L*sin(theta)]`), load cases and combinations,
   solved-for loads ("what force P holds this?"), actuated joints, cables
@@ -90,6 +93,7 @@ engmech report my-frame.yaml --open        # HTML report with interactive diagra
 engmech check my-frame.yaml                # is it stable? determinate? which DOF are free?
 engmech mass bracket.yaml --about A        # mass, cog, inertia tensors, principal axes
 engmech sweep beam.yaml --param "P=0 kN:20 kN:11" --output A.Fy,B.N --csv out.csv
+engmech validate --report validation.html  # qualify this installation
 engmech schema -o engmech.schema.json      # JSON Schema for editor autocompletion
 ```
 
@@ -167,23 +171,37 @@ Every example states its hand calculation in its description, and its
 
 ## Verification
 
-- The examples, plus ten further textbook problems in `tests/verification/`
-  that were written and hand-solved independently of the solver code,
-  must reproduce their hand calculations.
-- Property-based tests check the physics for thousands of random cases: a
-  fixed support cancels any load system's resultant; six arbitrary links
-  agree with an independently built linear system; answers are identical
-  in millimetres and metres; moving and rotating a whole model rotates its
-  reactions with it; equal-stiffness bolt groups reproduce the elastic
-  method for random layouts; composite inertia obeys the parallel-axis
-  theorem.
-- Dynamics tests cover a released pendulum (pivot force mg/4), centripetal
-  loads, gyroscopic moments and Newton's second law on a free body.
+engmech is verified against hand calculations and against independent,
+established software. [docs/validation.md](docs/validation.md) has the
+full evidence, the assumptions and limitations, and a procedure for using
+engmech inside a quality system. In brief:
+
+- **Hand calculations:** 22 benchmark models reproduce 122 hand-derived
+  values. Ten of them were written and solved by a reviewer who never saw
+  the solver code.
+- **Independent solvers:**
+  - statics agrees with the PyNite finite-element solver to 10⁻¹² on 200
+    random frames and trusses;
+  - inverse dynamics agrees with MuJoCo to 10⁻¹⁴ on 120 random 3D
+    mechanisms;
+  - mass properties agree with trimesh mesh integration to 10⁻¹³, with
+    curved shapes converging at the expected rate.
+- **Randomised tests:** property-based tests check physical invariants
+  (units, rigid motions, the elastic method, the parallel-axis theorem),
+  and input fuzzing checks that malformed and degenerate models fail
+  cleanly.
+- **Your own installation:** `engmech validate --report validation.html`
+  re-runs the benchmark suite on your machine and writes a pass/fail
+  report.
 
 ## Documentation
 
 - [Input file reference](docs/input-format.md): every section, joint type,
   load type and unit rule.
+- [Theory manual](docs/theory.md): equations, conventions, algorithms and
+  numerical tolerances.
+- [Verification and validation](docs/validation.md): evidence, limitations
+  and quality-system use.
 
 ## Development
 

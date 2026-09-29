@@ -38,10 +38,26 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
       - run: uv sync --python ${{ matrix.python-version }}
-      - run: uv run pytest --cov --cov-report=term
-      - name: Every example solves from the CLI
+      - name: Tests, with coverage gates
         shell: bash
         run: |
-          for f in src/engmech/examples/*.yaml tests/verification/*.yaml; do
-            uv run engmech solve "$f" > /dev/null || { echo "failed: $f"; exit 1; }
-          done
+          uv run pytest --ignore=tests/oracles --cov --cov-report=term --cov-fail-under=90
+          # the calculation core is held to a higher standard than presentation code
+          uv run coverage report --fail-under=96 --include="*/engmech/solver.py,*/engmech/results.py,*/engmech/diagnostics.py,*/engmech/mass.py,*/engmech/loads.py,*/engmech/joints.py,*/engmech/model.py,*/engmech/inputs.py,*/engmech/units.py,*/engmech/shapes.py,*/engmech/spatial.py"
+      - name: Built-in validation suite
+        run: uv run engmech validate --report validation-report.html
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: validation-report-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: validation-report.html
+          retention-days: 90
+
+  oracles:
+    name: Cross-checks against independent solvers
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --python 3.13 --group validation
+      - run: uv run pytest tests/oracles -m oracle -v

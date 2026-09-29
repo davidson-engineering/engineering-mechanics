@@ -74,9 +74,32 @@ Presets:
 | `US-in` | in | lbf | lb | deg |
 | `US-ft` | ft | lbf | lb | deg |
 
-Derived units follow from these (moment = force × length, inertia = mass ×
-length², and so on). If you give an imperial force unit without a mass unit,
-mass defaults to lb. Bare angles are in degrees unless you change `angle`.
+Derived units follow from these. If you give an imperial force unit without
+a mass unit, mass defaults to lb. With the default `SI` system, a bare number
+means:
+
+| Quantity | Bare-number unit | Derived from |
+|---|---|---|
+| length, position | m | length |
+| force | N | force |
+| moment, couple | N·m | force × length |
+| mass | kg | mass |
+| angle | deg | angle |
+| angular velocity | rad/s | radians ÷ time |
+| angular acceleration | rad/s² | radians ÷ time² |
+| acceleration | m/s² | length ÷ time² |
+| density | kg/m³ | mass ÷ length³ |
+| mass per length (rods) | kg/m | mass ÷ length |
+| inertia | kg·m² | mass × length² |
+| distributed load, stiffness | N/m | force ÷ length |
+| rotational stiffness | N·m/rad | force × length ÷ radians |
+
+Note that bare **angles** are in degrees, while bare **angular velocities
+and accelerations** are in rad/s and rad/s² (the `angle` setting does not
+change them). Write the unit when in doubt: `300 rpm`, `2 rev/s`,
+`90 deg/s`. `Hz` is rejected for angular quantities because it is ambiguous.
+Any quantity can be given its own display and bare-number unit, e.g.
+`units: {system: SI, angular_velocity: rpm, inertia: kg*mm^2}`.
 
 Every value is checked against the quantity it is used for. A length given
 as `10 N` is an error, not a silent mistake.
@@ -88,6 +111,10 @@ as `10 N` is an error, not a silent mistake.
   without spaces are units too (`9.81 m/s^2`, `5 kN*m`).
 - Anywhere else, a parameter wins over a unit of the same name: `2*m`,
   `m * g` and `L/2` use the parameters `m` and `L`.
+- A number and its units form one quantity: `10 kN / 2 m` is
+  (10 kN) / (2 m) = 5 kN/m.
+- A name directly followed by `(` is a function call; to multiply, write
+  `P*(1 + x)`.
 - A bare number added to a quantity with units takes the file's unit for
   that quantity: with lengths in mm, `r + 3` is `r + 3 mm`.
 - Trigonometric functions need angles with units (`sin(30 deg)`), so
@@ -191,13 +218,22 @@ An inertia tensor is the true tensor, so off-diagonal entries are the
 negated products of inertia (Ixy = −∫xy dm). Mass properties are checked for
 physical consistency (positive mass, triangle inequality).
 
+A bare `density` uses mass ÷ length³, so with lengths in mm it would be
+kg/mm³. Always write density with its unit (`7850 kg/m^3`, `7.85 g/cm^3`,
+`0.284 lb/in^3`); a density outside 0.05 to 25 000 kg/m³ is rejected as a
+likely unit mistake. On a `rod`, `density` is mass per unit length.
+
 `orientation` (for boxes, custom shapes, fixed and custom joints) is one of:
 
 ```yaml
-orientation: {x: [1, 1, 0], z: +z}                  # any two local axes
+orientation: {x: [1, 1, 0], z: +z}                  # any two local axes (see below)
 orientation: {axis: +z, angle: 30 deg}              # rotation about an axis
 orientation: {euler: [0, 30, 45], sequence: xyz}    # degrees; lowercase extrinsic, UPPER intrinsic
 ```
+
+With two axes that are not exactly perpendicular, one is kept as given and
+the other is made perpendicular to it: z is kept over x, and x over y,
+whatever order you write them in.
 
 ### motion (inverse dynamics)
 

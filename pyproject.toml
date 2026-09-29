@@ -1,7 +1,7 @@
 [project]
 name = "engineering-mechanics"
 description = "Rigid-body statics, dynamics and mass properties for engineers: unit-aware input files, a CLI, and verified HTML reports"
-version = "0.2.0"
+version = "0.3.0"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { file = "LICENSE" }
@@ -38,6 +38,8 @@ repository = "https://github.com/davidson-engineering/engineering-mechanics"
 
 [dependency-groups]
 dev = ["pytest>=8", "pytest-cov>=5", "hypothesis>=6.100", "ruff>=0.6"]
+# independent solvers used as test oracles (tests/oracles); not needed to use engmech
+validation = ["mujoco>=3.1", "PyNiteFEA>=0.0.100", "trimesh>=4", "manifold3d>=3"]
 
 [build-system]
 requires = ["hatchling"]
@@ -49,6 +51,7 @@ packages = ["src/engmech"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra --strict-markers"
+markers = ["oracle: cross-checks against independent solvers (needs the validation dependency group)"]
 # EncodingWarning only fires under PYTHONWARNDEFAULTENCODING=1 (set in CI): any file
 # access without an explicit encoding breaks on Windows. plotly's own cache is exempt.
 filterwarnings = ["error", "ignore::EncodingWarning:plotly.*"]

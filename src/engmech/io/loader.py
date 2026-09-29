@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import difflib
+import hashlib
 import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
@@ -27,6 +28,9 @@ class SourceMap:
 
     path: str
     data: Any = None
+    text: str | None = None  # the file as read, for provenance
+    sha256: str | None = None  # of the bytes on disk (or of the text given)
+    size: int | None = None
 
     def locate(self, where: str | Sequence[Any] | None) -> tuple[int, int] | None:
         if where is None or self.data is None:
@@ -100,15 +104,24 @@ def read_yaml(text: str, path: str = "<input>") -> Any:
 def load_model(path: str | Path) -> Model:
     path = Path(path)
     try:
-        text = path.read_text(encoding="utf-8")
+        raw = path.read_bytes()
     except OSError as exc:
         raise InputError(f"cannot read {path}: {exc.strerror}") from None
-    return loads_model(text, str(path))
+    try:
+        text = raw.decode("utf-8-sig")
+    except UnicodeDecodeError as exc:
+        raise InputError(f"{path} is not UTF-8 text (byte {exc.start})") from None
+    model = loads_model(text.replace("\r\n", "\n"), str(path))
+    # hash the bytes on disk, so the record matches the file exactly on any OS
+    model.source.sha256 = hashlib.sha256(raw).hexdigest()
+    model.source.size = len(raw)
+    return model
 
 
 def loads_model(text: str, path: str = "<input>") -> Model:
     data = read_yaml(text, path)
-    source = SourceMap(path, data)
+    encoded = text.encode("utf-8")
+    source = SourceMap(path, data, text, hashlib.sha256(encoded).hexdigest(), len(encoded))
     if data is None:
         raise ModelFileError([f"{path}: the file is empty"])
     if not isinstance(data, Mapping):

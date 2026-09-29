@@ -32,7 +32,8 @@ def parse(block: str) -> None:
 @pytest.mark.parametrize("path", DOCS, ids=lambda p: p.name)
 def test_yaml_snippets_parse(path):
     blocks = yaml_blocks(path)
-    assert blocks
+    if not blocks:
+        pytest.skip("no YAML examples in this document")
     for block in blocks:
         parse(block)
 

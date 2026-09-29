@@ -10,6 +10,9 @@ from engmech.model import GROUND, BuiltModel
 from engmech.solver import ROW_NAMES, System
 from engmech.units import UnitSystem
 
+# relative mismatch of accelerations or angular rates at a joint that is reported
+KINEMATIC_TOL = 1e-8
+
 
 @dataclass
 class BodyMotion:
@@ -139,13 +142,15 @@ def kinematic_warnings(model: BuiltModel) -> list[str]:
         if np.linalg.matrix_rank(forces, tol=1e-9) < needed:
             continue
         p = geo.point_b
-        a_a, w_a, al_a = _point_state(model, joint.body_a, p)
-        a_b, w_b, al_b = _point_state(model, joint.body_b, p)
-        scale = max(np.linalg.norm(a_a), np.linalg.norm(a_b), 1e-9)
+        a_a, w_a, al_a, size_a = _point_state(model, joint.body_a, p)
+        a_b, w_b, al_b, size_b = _point_state(model, joint.body_b, p)
+        # judge the mismatch against the size of the terms that were summed, so the
+        # round-off of a + alpha x r + w x (w x r) at a fixed pivot is not a warning
+        scale = max(size_a, size_b)
         rel = a_b - a_a
         if model.planar:
             rel[2] = 0.0
-        if np.linalg.norm(rel) > 1e-6 * scale:
+        if np.linalg.norm(rel) > KINEMATIC_TOL * scale:
             warnings.append(
                 f"{joint.name}: the prescribed motions give the joint point different "
                 f"accelerations on {joint.body_a} ({_vec(a_a, units, 'acceleration')}) and "
@@ -163,11 +168,11 @@ def kinematic_warnings(model: BuiltModel) -> list[str]:
         Dm = np.array(moments)
         w_rel = w_b - w_a
         al_rel = al_b - al_a - np.cross(w_a, w_rel)
-        wscale = max(np.linalg.norm(w_a), np.linalg.norm(w_b), 1e-9)
-        ascale = max(np.linalg.norm(al_a), np.linalg.norm(al_b), wscale**2, 1e-9)
+        wscale = max(np.linalg.norm(w_a), np.linalg.norm(w_b))
+        ascale = max(np.linalg.norm(al_a), np.linalg.norm(al_b), wscale**2)
         if (
-            np.linalg.norm(Dm @ w_rel) > 1e-6 * wscale
-            or np.linalg.norm(Dm @ al_rel) > 1e-6 * ascale
+            np.linalg.norm(Dm @ w_rel) > KINEMATIC_TOL * wscale
+            or np.linalg.norm(Dm @ al_rel) > KINEMATIC_TOL * ascale
         ):
             warnings.append(
                 f"{joint.name}: the angular motions of {joint.body_a} and {joint.body_b} "
@@ -177,13 +182,27 @@ def kinematic_warnings(model: BuiltModel) -> list[str]:
 
 
 def _point_state(model: BuiltModel, body: str, point: np.ndarray):
+    """Acceleration of ``point`` on ``body``, its angular velocity and
+    acceleration, and the size of the terms summed for the acceleration."""
+    zero = np.zeros(3)
     if body == GROUND:
-        return np.zeros(3), np.zeros(3), np.zeros(3)
+        return zero, zero, zero, 0.0
     b = model.bodies[body]
     if b.motion is None:
-        return np.zeros(3), np.zeros(3), np.zeros(3)
+        return zero, zero, zero, 0.0
     m = b.motion
-    return m.point_acceleration(b.mass.cog, point), m.angular_velocity, m.angular_acceleration
+    r = float(np.linalg.norm(np.asarray(point) - b.mass.cog))
+    size = (
+        float(np.linalg.norm(m.acceleration))
+        + float(np.linalg.norm(m.angular_acceleration)) * r
+        + float(np.linalg.norm(m.angular_velocity)) ** 2 * r
+    )
+    return (
+        m.point_acceleration(b.mass.cog, point),
+        m.angular_velocity,
+        m.angular_acceleration,
+        size,
+    )
 
 
 # --------------------------------------------------------------------------- formatting
