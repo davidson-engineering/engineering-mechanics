@@ -98,7 +98,7 @@
   dl.facts dd { margin: 0; }
   .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px 28px; }
   .matrix { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 12.5px; border-collapse: collapse; }
-  .matrix td { padding: 1px 0 1px 14px; text-align: right; }
+  .matrix td { padding: 1px 0 1px 14px; text-align: right; white-space: pre; }
   .inertia { border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
   .inertia h4 { margin: 0 0 8px; font-size: 14px; }
   .inertia .label { color: var(--muted); font-size: 12.5px; margin: 8px 0 2px; }

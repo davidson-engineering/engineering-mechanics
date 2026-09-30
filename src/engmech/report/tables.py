@@ -36,6 +36,12 @@ class Table:
     notes: list[str] = field(default_factory=list)
     units: str = ""  # units of the numeric columns, shown with the title
 
+    def numeric(self, column: int) -> bool:
+        """Whether a column is right-aligned, header and all: from
+        ``numeric_from`` on, or where every cell holds a number."""
+        cells = [row[column] for row in self.rows]
+        return column >= self.numeric_from or (bool(cells) and all(c.numeric for c in cells))
+
 
 def _num(value: float | None, units: UnitSystem, kind: str) -> Cell:
     if value is None:
@@ -161,6 +167,7 @@ def envelope_table(results: Results, units: UnitSystem, kind: str) -> Table | No
         return None
     scale = max(_case_scale(c) for c in cases)
     rows = []
+    kinds = set()  # of the rows shown, for the units note
     for name in joints:
         per_case = [c.joints[name] for c in cases]
         first = per_case[0]
@@ -192,6 +199,7 @@ def envelope_table(results: Results, units: UnitSystem, kind: str) -> Table | No
                 else:
                     row.append(Cell(INDETERMINATE, "warn", True))
             rows.append(row)
+            kinds.add(kind_of)
             shown += 1
     if not rows:
         return None
@@ -209,7 +217,7 @@ def envelope_table(results: Results, units: UnitSystem, kind: str) -> Table | No
         caption,
         numeric_from=2,
     )
-    table.units = units_note(units, ["force", "moment"])
+    table.units = units_note(units, [k for k in ("force", "moment") if k in kinds])
     return table
 
 
@@ -292,14 +300,16 @@ def loads_table(results: Results, case: CaseResult, units: UnitSystem) -> Table:
 
 
 def balance_table(results: Results, case: CaseResult, units: UnitSystem) -> Table:
+    scale = _case_scale(case)
     rows = []
     for b in case.balance:
         style = "good" if b.ok else "bad"
+        force, moment = _clean([np.linalg.norm(b.force), np.linalg.norm(b.moment)], scale)
         rows.append(
             [
                 Cell(b.body, "strong"),
-                Cell(units.format(float(np.linalg.norm(b.force)), "force")),
-                Cell(units.format(float(np.linalg.norm(b.moment)), "moment")),
+                Cell(units.format(float(force), "force")),
+                Cell(units.format(float(moment), "moment")),
                 Cell(f"{b.relative:.1e}", "", True),
                 Cell("✓ balanced" if b.ok else "✗ NOT balanced", style),
             ]
@@ -374,7 +384,8 @@ def inertia_detail(model: BuiltModel, body_name: str, units: UnitSystem) -> dict
     return {
         "tensor": [[format_number(x * f) for x in row] for row in p.inertia],
         "moments": [format_number(x * f) for x in moments],
-        "axes": [[f"{x:.4f}" for x in axes[:, i]] for i in range(3)],
+        # signed to one width (a space for +, no -0.0000), so the vectors line up
+        "axes": [[f"{round(float(x), 4) + 0.0: .4f}" for x in axes[:, i]] for i in range(3)],
         "radii": [units.format(x, "length") for x in p.radii_of_gyration()],
         "shapes": [
             (
