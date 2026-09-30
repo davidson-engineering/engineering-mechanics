@@ -2,7 +2,7 @@
 
 [![PyPI](https://img.shields.io/pypi/v/engmech)](https://pypi.org/project/engmech/)
 [![Python](https://img.shields.io/pypi/pyversions/engmech)](https://pypi.org/project/engmech/)
-[![Tests](https://github.com/davidson-engineering/engineering-mechanics/actions/workflows/python-app.yml/badge.svg)](https://github.com/davidson-engineering/engineering-mechanics/actions/workflows/python-app.yml)
+[![Tests](https://github.com/davidson-engineering/engmech/actions/workflows/python-app.yml/badge.svg)](https://github.com/davidson-engineering/engmech/actions/workflows/python-app.yml)
 
 Rigid-body statics, dynamics and mass properties for engineers.
 
@@ -11,7 +11,7 @@ command line, and get support reactions, joint forces, member forces and
 actuator torques, each one verified against equilibrium, plus an
 interactive HTML report with free-body diagrams.
 
-![An engmech report: title, summary checks, reaction and joint-force tables, and a free-body diagram of a truss with members coloured by tension and compression](https://raw.githubusercontent.com/davidson-engineering/engineering-mechanics/main/docs/images/report.png)
+![An engmech report: title, summary checks, reaction and joint-force tables, and a free-body diagram of a truss with members coloured by tension and compression](https://raw.githubusercontent.com/davidson-engineering/engmech/main/docs/images/report.png)
 
 ## Quick start
 
@@ -122,7 +122,7 @@ diagram is drawn to the page width, every free body is shown with its own
 caption, and collapsed sections (equilibrium verification, applied loads,
 the input file) are printed in full.
 
-![A 3D free-body diagram of a boom held by a ball joint and two cables](https://raw.githubusercontent.com/davidson-engineering/engineering-mechanics/main/docs/images/report-3d.png)
+![A 3D free-body diagram of a boom held by a ball joint and two cables](https://raw.githubusercontent.com/davidson-engineering/engmech/main/docs/images/report-3d.png)
 
 **Company logo.** Reports have no logo unless you give one. Set it once for
 every report in the user config file (`engmech config` shows where it is):
@@ -243,7 +243,7 @@ Every example states its hand calculation in its description, and its
 
 engmech is verified against hand calculations and against independent,
 established software. The
-[verification and validation document](https://github.com/davidson-engineering/engineering-mechanics/blob/main/docs/validation.md)
+[verification and validation document](https://github.com/davidson-engineering/engmech/blob/main/docs/validation.md)
 has the full evidence, the assumptions and limitations, and a procedure for
 using engmech inside a quality system. In brief:
 
@@ -268,11 +268,11 @@ using engmech inside a quality system. In brief:
 
 ## Documentation
 
-- [Input file reference](https://github.com/davidson-engineering/engineering-mechanics/blob/main/docs/input-format.md):
+- [Input file reference](https://github.com/davidson-engineering/engmech/blob/main/docs/input-format.md):
   every section, joint type, load type and unit rule.
-- [Theory manual](https://github.com/davidson-engineering/engineering-mechanics/blob/main/docs/theory.md):
+- [Theory manual](https://github.com/davidson-engineering/engmech/blob/main/docs/theory.md):
   equations, conventions, algorithms and numerical tolerances.
-- [Verification and validation](https://github.com/davidson-engineering/engineering-mechanics/blob/main/docs/validation.md):
+- [Verification and validation](https://github.com/davidson-engineering/engmech/blob/main/docs/validation.md):
   evidence, limitations and quality-system use.
 
 ## Development
@@ -285,7 +285,7 @@ uv run engmech schema -o schema/engmech.schema.json   # after changing the file 
 uv run --with pillow python scripts/make_screenshots.py  # after changing the report's look
 ```
 
-[Releasing](https://github.com/davidson-engineering/engineering-mechanics/blob/main/docs/releasing.md)
+[Releasing](https://github.com/davidson-engineering/engmech/blob/main/docs/releasing.md)
 describes how versions are published to PyPI and GitHub.
 
 ## License

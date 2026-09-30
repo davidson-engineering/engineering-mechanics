@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=https://raw.githubusercontent.com/davidson-engineering/engineering-mechanics/main/schema/engmech.schema.json
+# yaml-language-server: $schema=https://raw.githubusercontent.com/davidson-engineering/engmech/main/schema/engmech.schema.json
 name: Simply supported beam
 description: |
   8 m beam, pinned at A and on a roller at B, carrying a point load, a

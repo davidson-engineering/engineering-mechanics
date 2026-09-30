@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=https://raw.githubusercontent.com/davidson-engineering/engineering-mechanics/main/schema/engmech.schema.json
+# yaml-language-server: $schema=https://raw.githubusercontent.com/davidson-engineering/engmech/main/schema/engmech.schema.json
 name: Motor torque for a swinging arm
 description: |
   A 1.2 m, 3 kg arm carrying a 1 kg payload at its tip is driven by a motor
