@@ -11,7 +11,7 @@ def test_validation_suite_passes():
     failed = [(o.name, o.detail) for o in run.outcomes if not o.passed]
     assert not failed
     summary = run.summary()
-    assert summary["benchmark"]["cases"] >= 22
+    assert summary["benchmark"]["cases"] >= 23
     assert summary["property"]["cases"] == len(validation.PROPERTIES)
 
 
