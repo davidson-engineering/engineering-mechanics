@@ -76,7 +76,8 @@ def test_report_up_axis(tmp_path):
     from importlib import resources
 
     def vertical_axis(html):
-        figure = json.loads(re.search(r"var fig = (\{.*?\});\n", html).group(1))
+        call = re.search(r'engmechFigure\("figure-1", (.*), "[^"]*"\);</script>', html)
+        figure = json.loads(call.group(1))
         return figure["layout"]["scene"]["zaxis"]["title"]["text"]
 
     boom = resources.files("engmech") / "examples" / "boom.yaml"

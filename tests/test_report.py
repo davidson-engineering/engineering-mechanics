@@ -22,7 +22,7 @@ def test_report_renders_every_section(name):
         "Method and conventions",
     ):
         assert heading in html
-    assert html.count("Plotly.newPlot") == len(results.cases)
+    assert html.count('engmechFigure("figure-') == len(results.cases)
 
 
 def test_figure_views_for_multibody():
@@ -263,3 +263,141 @@ def test_distributed_load_label_clears_a_mid_span_load():
             break
     else:
         pytest.fail("no distributed load label")
+
+
+def test_load_cases_are_compared_side_by_side():
+    from engmech.report import tables as t
+
+    results = load_model(str(EXAMPLES / "load-combinations.yaml")).solve()
+    table = t.envelope_table(results, results.model.output_units, "support")
+    assert table.headers == ["Support", "", "dead", "live", "ULS", "SLS", "Max", "Min"]
+    rows = {(r[0].text, r[1].text): [c.text for c in r[2:]] for r in table.rows}
+    assert ("A", "Fx") not in rows  # zero in every case
+    assert rows[("A", "Fy")] == ["10.41", "15.67", "37.56", "26.08", "37.56 (ULS)", "10.41 (dead)"]
+    html = render_report(results, plotly_cdn=True)
+    assert "Load cases compared" in html
+    assert '<a href="#case-3">ULS</a>' in html
+    # a single case has nothing to compare
+    boom = load_model(str(EXAMPLES / "boom.yaml")).solve()
+    assert t.envelope_table(boom, boom.model.output_units, "support") is None
+    assert "Load cases compared" not in render_report(boom, plotly_cdn=True)
+
+
+def test_report_figures_have_view_buttons_and_print_images():
+    html = render_report(load_model(str(EXAMPLES / "frame.yaml")).solve(), plotly_cdn=True)
+    assert '<div class="views" hidden></div>' in html
+    assert '<div class="print-views"></div>' in html
+    assert "function renderPrintViews" in html
+    assert "Balance of each body" in html  # not a second "Equilibrium verification"
+
+
+def test_each_planar_view_frames_what_it_shows():
+    fig = load_model(str(EXAMPLES / "robot-arm.yaml")).solve().figure()
+    for button in fig.layout.updatemenus[0].buttons:
+        visible, ranges = button.args
+        assert button.method == "update"
+        xs, ys = [], []
+        for tr, shown in zip(fig.data, visible["visible"], strict=True):
+            if shown:
+                xs += [v for v in tr.x if v is not None]
+                ys += [v for v in tr.y if v is not None]
+        x0, x1 = ranges["xaxis.range"]
+        y0, y1 = ranges["yaxis.range"]
+        assert x0 < min(xs), button.label
+        assert max(xs) < x1, button.label
+        assert y0 < min(ys), button.label
+        assert max(ys) < y1, button.label
+
+
+def test_member_labels_face_out_of_the_truss():
+    """The two diagonals meeting under the load label on their outer sides,
+    clear of each other and of the load's label."""
+    fig = load_model(str(EXAMPLES / "truss.yaml")).solve().figure()
+    tension = next(
+        tr for tr in fig.data if tr.mode == "text" and tr.legendgroup == "tension" and tr.visible
+    )
+    sides = {
+        round(x, 3): position
+        for x, text, position in zip(tension.x, tension.text, tension.textposition, strict=True)
+        if text == "7.211 kN T"
+    }
+    (left_x, left), (right_x, right) = sorted(sides.items())
+    assert left_x < 4 < right_x
+    assert "left" in left
+    assert "right" in right
+
+
+def test_moment_labels_grow_sideways_clear_of_a_vertical_reaction():
+    fig = load_model(str(EXAMPLES / "robot-arm.yaml")).solve().figure()
+    reaction = next(
+        tr for tr in fig.data if tr.mode == "text" and tr.legendgroup == "reaction" and tr.visible
+    )
+    positions = dict(zip(reaction.text, reaction.textposition, strict=True))
+    assert positions["53.94 N\u22c5m"] == "bottom left"  # the 107.9 N reaction runs straight down
+
+
+@pytest.mark.parametrize("name", ["boom", "cantilever", "gyroscope", "shaft", "boom-y-up"])
+def test_report_script_fits_3d_scenes_like_python(name, tmp_path):
+    """The report refits 3D scenes to the size they are shown at with a copy
+    of SceneFit.solve in figure.js; the two must agree."""
+    import json
+    import shutil
+    import subprocess
+    from importlib import resources as res
+
+    import numpy as np
+
+    from engmech.report.figure import SceneFit
+
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("needs Node.js to run the report's script")
+    fit = _results(name).figure().layout.meta["engmech_fit"]
+    script = (res.files("engmech") / "report" / "templates" / "figure.js").read_text("utf-8")
+    runner = tmp_path / "fit.js"
+    runner.write_text(
+        "globalThis.window = {addEventListener() {}};\n"
+        + script
+        + f"\nconst m = {json.dumps(fit)};\n"
+        + "console.log(JSON.stringify([[1.6, 562], [0.8, 330], [2.4, 700]].map("
+        + "([a, h]) => window.engmechFitScene(m, a, h))));\n",
+        encoding="utf-8",
+    )
+    out = subprocess.run(
+        [node, str(runner)], capture_output=True, text=True, encoding="utf-8", check=True
+    )
+    labels = [(np.array(p), xs, ys) for p, xs, ys in fit["labels"]]
+    lo, hi, right, up = (np.array(fit[k]) for k in ("lo", "hi", "right", "up"))
+    python = SceneFit(lo, hi, labels, right, up)
+    for (aspect, height), js in zip(
+        [(1.6, 562), (0.8, 330), (2.4, 700)], json.loads(out.stdout), strict=True
+    ):
+        lo, hi, ratio = python.solve(aspect, height)
+        np.testing.assert_allclose(js["lo"], lo, rtol=1e-9, atol=1e-12)
+        np.testing.assert_allclose(js["hi"], hi, rtol=1e-9, atol=1e-12)
+        np.testing.assert_allclose(js["ratio"], ratio, rtol=1e-9)
+
+
+def test_coloured_members_are_not_also_drawn_as_dashed_links():
+    """Two lines in the same place flicker in 3D: where a cable or link is
+    coloured by its force, its plain dashed line is left out, and it comes
+    back in free-body views, where members are not coloured."""
+
+    def dashed(fig, view=None):
+        visible = view.args[0]["visible"] if view else [tr.visible for tr in fig.data]
+        return [
+            tr
+            for tr, shown in zip(fig.data, visible, strict=True)
+            if shown and tr.type == "scatter3d" and tr.line and tr.line.dash == "dash"
+        ]
+
+    def ends(traces):
+        return {(x, z) for tr in traces for x, z in zip(tr.x, tr.z, strict=True) if x is not None}
+
+    assert dashed(_results("boom").figure()) == []  # both cables are coloured
+    fig = _results("stayed-beam").figure()
+    views = {b.label: b for b in fig.layout.updatemenus[0].buttons}
+    stay = {(0.0, 3.0), (4.0, 0.0)}  # the stay (in tension) runs from M to B
+    assert not stay <= ends(dashed(fig, views["Whole model"]))  # it is coloured instead
+    assert (4.0, 0.0) in ends(dashed(fig, views["Whole model"]))  # link S carries nothing
+    assert stay <= ends(dashed(fig, views["Free body: beam"]))

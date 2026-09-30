@@ -114,6 +114,14 @@ def render_report(
         status=results.status,
         cases=cases,
         multi=len(cases) > 1,
+        envelope=[
+            x
+            for x in (
+                t.envelope_table(results, units, "support"),
+                t.envelope_table(results, units, "joint"),
+            )
+            if x
+        ],
         checks=t.check_table(results, units),
         notes=results.notes + t.dropped_notes(results),
         mechanism=mechanism,

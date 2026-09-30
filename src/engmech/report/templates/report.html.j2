@@ -32,6 +32,9 @@
 {% if plotly_js %}<script>{{ plotly_js }}</script>
 {% else %}<script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
 {% endif %}
+<script>
+{% include "figure.js" %}
+</script>
 </head>
 <body>
 <main>
@@ -90,6 +93,21 @@
   {% endif %}
 </section>
 
+{% if envelope %}
+<section class="card" id="cases">
+  <div class="section-head">
+    <h2>Load cases compared</h2>
+    <nav class="sub jump">Details:
+      {% for c in cases %}<a href="#case-{{ loop.index }}">{{ c.name }}</a>{{ " · " if not loop.last }}{% endfor %}
+    </nav>
+  </div>
+  {% for tbl in envelope %}
+  <h3>{{ tbl.title }}{% if tbl.units %} <span class="units">{{ tbl.units }}</span>{% endif %}</h3>
+  {{ table(tbl) }}
+  {% endfor %}
+</section>
+{% endif %}
+
 {% for c in cases %}
 <section class="card" id="case-{{ loop.index }}">
   <div class="section-head">
@@ -109,17 +127,12 @@
   {{ table(tbl) }}
   {% endfor %}
   <h3>Free-body diagram</h3>
-  <div class="figure"><div class="plot" id="fig-{{ loop.index }}"></div></div>
-  <script>
-    (function () {
-      var fig = {{ c.figure }};
-      Plotly.newPlot("fig-{{ loop.index }}", fig.data, fig.layout, {
-        responsive: true, displaylogo: false,
-        modeBarButtonsToRemove: ["select2d", "lasso2d", "autoScale2d"],
-        toImageButtonOptions: {format: "png", scale: 2, filename: {{ (title ~ ' ' ~ c.name) | tojson }}}
-      });
-    })();
-  </script>
+  <div class="figure" id="figure-{{ loop.index }}">
+    <div class="views" hidden></div>
+    <div class="plot" id="fig-{{ loop.index }}"></div>
+    <div class="print-views"></div>
+  </div>
+  <script>engmechFigure("figure-{{ loop.index }}", {{ c.figure }}, {{ (title ~ ' ' ~ c.name) | tojson }});</script>
   <details{% if not c.case.verified %} open{% endif %}>
     <summary>Equilibrium verification</summary>
     <div class="body">

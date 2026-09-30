@@ -224,19 +224,23 @@ def _is_angle(q: pint.Quantity) -> bool:
 
 def format_number(x: float, digits: int = 4) -> str:
     """Format a number for engineering tables: ~4 significant figures,
-    no scientific notation in the everyday range, and no '-0'."""
+    no scientific notation in the everyday range (0.0001 up to 10 million),
+    compact scientific notation outside it (7.5e-6, 1.5e9), and no '-0'."""
     if not math.isfinite(x):
         return str(x)
     if x == 0 or abs(x) < 1e-12:
         return "0"
     ax = abs(x)
-    if 1e-3 <= ax < 1e7:
+    if 1e-4 <= ax < 1e7:
         decimals = max(0, digits - 1 - math.floor(math.log10(ax)))
         text = f"{x:,.{decimals}f}"
         if "." in text:
             text = text.rstrip("0").rstrip(".")
         return "0" if text in ("-0", "") else text
-    return f"{x:.{digits - 1}e}"
+    mantissa, exponent = f"{x:.{digits - 1}e}".split("e")
+    if "." in mantissa:
+        mantissa = mantissa.rstrip("0").rstrip(".")
+    return f"{mantissa}e{int(exponent)}"
 
 
 # --------------------------------------------------------------------------- expressions
