@@ -11,14 +11,14 @@ command line, and get support reactions, joint forces, member forces and
 actuator torques, each one verified against equilibrium, plus an
 interactive HTML report with free-body diagrams.
 
-![An engmech report: title, summary checks, reaction and joint-force tables, and a free-body diagram of a truss with members coloured by tension and compression](https://raw.githubusercontent.com/davidson-engineering/engmech/main/docs/images/report.png)
+![A 3D free-body diagram from an engmech report: an excavator slewed off its tracks breaking out a slab, with its boom cylinder in compression, its arm and bucket cylinders in tension, the slab's force on the bucket teeth and the reaction from the ground](https://raw.githubusercontent.com/davidson-engineering/engmech/main/docs/images/report-3d.png)
 
 ## Quick start
 
 ```bash
 pip install engmech
-engmech examples copy truss        # start from a bundled example
-engmech report truss.yaml --open   # the report above
+engmech examples copy excavator        # start from a bundled example
+engmech report excavator.yaml --open   # its report, with the diagram above
 ```
 
 A model is a short YAML file:
@@ -94,48 +94,26 @@ when pushing on the body.
 ## Reports
 
 `engmech report model.yaml` writes one self-contained HTML file: it opens
-offline, prints cleanly, and can be filed with the calculation it records.
-A report leads with the results:
+offline, prints as a calculation document, and can be filed with the
+calculation it records. A report leads with the results:
 
 1. **Summary**: whether each load case is balanced and determinate, how
-   many of the file's checks pass, and any warning that applies to the
-   whole model, such as free motions or sensitivity to geometry.
-2. **Load cases compared**, when there is more than one: every support
-   reaction and joint force in every load case and combination side by
-   side, with the maximum and minimum and the case each comes from.
-3. **Results** for each load case and combination: support reactions,
-   joint forces and solved loads, then an interactive free-body diagram.
-   Planar models are drawn with engineering support symbols; spatial models
-   in 3D, with z up or, for models built with y or x up (as from CAD),
-   `report: {up: y}`. Two-force members are coloured by tension and
-   compression, and buttons switch between the whole model and the free
-   body of each part.
+   many of the file's checks pass, and any warning, with what to do about
+   it.
+2. **Load cases compared**, when there is more than one, side by side with
+   the maximum and minimum of each reaction and joint force.
+3. **Results** for each load case and combination, then an interactive
+   free-body diagram, in 2D or 3D, of the whole model and of each part.
+   Members are coloured by tension and compression.
 4. **Checks**, **notes** from the model's description (hand calculations,
    assumptions), and the **model** itself: determinacy, units, points,
    parameters and mass properties.
-5. **Provenance**: the engmech, Python and library versions, the platform,
-   parameter overrides, and the input file with its SHA-256, so a result
-   can be traced to exactly what produced it.
+5. **Provenance**: the versions, platform, parameter overrides and input
+   file (with its SHA-256) that produced the results.
 
-Printed or saved as PDF, a report becomes a calculation document: every
-diagram is drawn to the page width, every free body is shown with its own
-caption, and collapsed sections (equilibrium verification, applied loads,
-the input file) are printed in full.
-
-![A 3D free-body diagram of a boom held by a ball joint and two cables](https://raw.githubusercontent.com/davidson-engineering/engmech/main/docs/images/report-3d.png)
-
-**Company logo.** Reports have no logo unless you give one. Set it once for
-every report in the user config file (`engmech config` shows where it is):
-
-```toml
-[report]
-logo = "/path/to/logo.png"   # or an https:// URL; on Windows, 'C:\path\logo.png'
-```
-
-A model file's `report: {logo: ...}`, the `ENGMECH_LOGO` environment
-variable, and `--logo FILE|URL` or `--no-logo` on the command line override
-it, in that order from least to most specific. The image is embedded in the
-report, so it stays self-contained.
+[Reports](https://github.com/davidson-engineering/engmech/blob/main/docs/report.md)
+walks through every section with a screenshot, and covers printing and
+adding a company logo.
 
 ## Install
 
@@ -231,6 +209,7 @@ Every example states its hand calculation in its description, and its
 | `frame` | three-hinged frame, joint forces, free-body views |
 | `truss` | method of joints with particles and links |
 | `boom` | 3D boom on a ball joint and two cables |
+| `excavator` | 3D machine: hydraulic cylinder forces and the load on the ground |
 | `shaft` | shaft on bearings with a solved-for gear force |
 | `slider-crank` | mechanism held by an actuated crank |
 | `robot-arm` | holding torques of a two-link arm |
@@ -247,7 +226,7 @@ established software. The
 has the full evidence, the assumptions and limitations, and a procedure for
 using engmech inside a quality system. In brief:
 
-- **Hand calculations:** 22 benchmark models reproduce 122 hand-derived
+- **Hand calculations:** 23 benchmark models reproduce 127 hand-derived
   values. Ten of them were written and solved by a reviewer who never saw
   the solver code.
 - **Independent solvers:**
@@ -270,6 +249,8 @@ using engmech inside a quality system. In brief:
 
 - [Input file reference](https://github.com/davidson-engineering/engmech/blob/main/docs/input-format.md):
   every section, joint type, load type and unit rule.
+- [Reports](https://github.com/davidson-engineering/engmech/blob/main/docs/report.md):
+  every section of the HTML report, printing, and the company logo.
 - [Theory manual](https://github.com/davidson-engineering/engmech/blob/main/docs/theory.md):
   equations, conventions, algorithms and numerical tolerances.
 - [Verification and validation](https://github.com/davidson-engineering/engmech/blob/main/docs/validation.md):
@@ -282,7 +263,7 @@ uv sync
 uv run pytest
 uv run ruff check src tests scripts && uv run ruff format --check src tests scripts
 uv run engmech schema -o schema/engmech.schema.json   # after changing the file format
-uv run --with pillow python scripts/make_screenshots.py  # after changing the report's look
+uv run --with pillow --with pymupdf python scripts/make_screenshots.py  # after changing the report's look
 ```
 
 [Releasing](https://github.com/davidson-engineering/engmech/blob/main/docs/releasing.md)

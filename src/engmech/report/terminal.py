@@ -46,7 +46,7 @@ def _rich_table(table: t.Table) -> RichTable:
     )
     for i, h in enumerate(table.headers):
         cells = [row[i] for row in table.rows]
-        numeric = i >= table.numeric_from or (cells and all(c.numeric for c in cells))
+        numeric = table.numeric(i)
         if numeric or i == 0:
             # never cut a number or a name: shrink the other columns instead
             width = max([len(c.text) for c in cells] + [min(len(h), 10)])

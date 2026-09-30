@@ -65,9 +65,9 @@ each change, in CI on Linux, macOS and Windows with Python 3.11 to 3.14.
 Item 3.2 runs in a separate CI job, because it needs the optional
 `validation` dependencies. Item 3.5 happens every time a model is solved.
 
-### 3.1 Analytical benchmarks (22 models, 122 values)
+### 3.1 Analytical benchmarks (23 models, 127 values)
 
-Twelve examples (`src/engmech/examples`) and ten benchmark problems
+Thirteen examples (`src/engmech/examples`) and ten benchmark problems
 (`src/engmech/benchmarks`). Each model's description contains its hand
 derivation, and its `checks:` hold the hand-derived answers. The model
 must reproduce every value and pass the equilibrium check. The tolerance
@@ -84,8 +84,9 @@ hydraulically actuated boom.
 
 The examples cover beams with point, triangular and uniform loads and
 couples, a 3D cantilever with self-weight, a three-hinged frame, a Warren
-truss, a boom on cables, a shaft on bearings with a solved gear force, a
-slider-crank, a robot arm's holding torques, an eccentric bolt group,
+truss, a boom on cables, the hydraulic cylinders of a slewed excavator, a
+shaft on bearings with a solved gear force, a slider-crank, a robot arm's
+holding torques, an eccentric bolt group,
 load combinations with capacity checks, a motor-driven arm and a
 precessing gyroscope.
 

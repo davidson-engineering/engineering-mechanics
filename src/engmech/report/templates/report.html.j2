@@ -3,7 +3,7 @@
 <table class="data{{ ' compact' if compact }}">
   <thead><tr>
   {%- for h in tbl.headers %}
-    <th class="{{ 'num' if loop.index0 >= tbl.numeric_from }}">{{ h }}</th>
+    <th class="{{ 'num' if tbl.numeric(loop.index0) }}">{{ h }}</th>
   {%- endfor %}
   </tr></thead>
   <tbody>

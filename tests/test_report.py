@@ -243,6 +243,20 @@ def test_3d_free_body_view_shows_the_member_force_as_an_arrow():
     assert "2 kN/m" in _labels(fig, "applied")
 
 
+def test_3d_members_are_named_on_hover_not_at_their_ends():
+    """Supports and joints at a point are labelled with their names; a link
+    or cable spans two points, so it is named in its hover text instead (at a
+    truss node, the names of every member meeting there would pile up)."""
+    fig = _results("stayed-beam").figure()
+    assert sorted(_labels(fig, "supports")) == ["A", "N"]  # not the link S or the stay
+    tension = next(
+        tr
+        for tr in fig.data
+        if tr.type == "scatter3d" and tr.mode == "lines" and tr.legendgroup == "tension"
+    )
+    assert {t for t in tension.text if t} == {"<b>stay</b>: 6.667 kN T"}
+
+
 def test_text_positions_point_away_from_the_line():
     from engmech.report.figure import _text_position
 
@@ -274,6 +288,7 @@ def test_load_cases_are_compared_side_by_side():
     rows = {(r[0].text, r[1].text): [c.text for c in r[2:]] for r in table.rows}
     assert ("A", "Fx") not in rows  # zero in every case
     assert rows[("A", "Fy")] == ["10.41", "15.67", "37.56", "26.08", "37.56 (ULS)", "10.41 (dead)"]
+    assert table.units == "kN"  # only forces are left: Mz is zero in every case
     html = render_report(results, plotly_cdn=True)
     assert "Load cases compared" in html
     assert '<a href="#case-3">ULS</a>' in html
@@ -281,6 +296,36 @@ def test_load_cases_are_compared_side_by_side():
     boom = load_model(str(EXAMPLES / "boom.yaml")).solve()
     assert t.envelope_table(boom, boom.model.output_units, "support") is None
     assert "Load cases compared" not in render_report(boom, plotly_cdn=True)
+
+
+def test_a_column_of_numbers_has_its_header_aligned_with_it():
+    """The checks table's Value column sits between text columns; its header
+    is right-aligned like its numbers (as in the terminal)."""
+    html = render_report(load_model(str(EXAMPLES / "beam.yaml")).solve(), plotly_cdn=True)
+    checks = html[html.index('id="checks"') :]
+    assert '<th class="num">Value</th>' in checks
+    assert '<th class="">Criterion</th>' in checks
+
+
+def test_principal_axes_line_up():
+    """Axis components are signed to one width (and never -0.0000), so the
+    vectors printed one under another line up."""
+    from engmech.report import tables as t
+
+    model = load_model(str(EXAMPLES / "motor-arm.yaml")).build()
+    axes = t.inertia_detail(model, "arm", model.output_units)["axes"]
+    assert axes[0] == [" 0.8660", " 0.5000", " 0.0000"]
+    assert axes[1] == ["-0.5000", " 0.8660", " 0.0000"]
+
+
+def test_balance_table_shows_rounding_noise_as_zero():
+    """Residuals far below the loads (here 1e-12 kN·m on the excavator's
+    bucket) read as 0, like the rows that happen to cancel exactly."""
+    from engmech.report import tables as t
+
+    results = load_model(str(EXAMPLES / "excavator.yaml")).solve()
+    table = t.balance_table(results, results.primary, results.model.output_units)
+    assert [(r[1].text, r[2].text) for r in table.rows] == [("0 kN", "0 kN⋅m")] * 4
 
 
 def test_report_figures_have_view_buttons_and_print_images():
@@ -325,6 +370,31 @@ def test_member_labels_face_out_of_the_truss():
     assert left_x < 4 < right_x
     assert "left" in left
     assert "right" in right
+
+
+def test_force_labels_grow_away_from_their_arrows():
+    """A label beyond the tail of a horizontal arrow grows away from it
+    instead of being centred on it (where it would lie over the shaft)."""
+    from engmech.io.loader import loads_model
+
+    gate = loads_model(
+        """
+        analysis: planar
+        supports:
+          A: {type: pin, at: [0, 0]}
+          B: {type: pin, at: [0, 0.9]}
+        loads:
+          - {force: [0, -600], at: [0.6, 0.45]}
+        """
+    ).solve()
+    reaction = next(
+        tr
+        for tr in gate.figure().data
+        if tr.mode == "text" and tr.legendgroup == "reaction" and tr.visible
+    )
+    # A (below) pushes right, so its label is left of the tail; B pulls left
+    labels = sorted(zip(reaction.y, reaction.textposition, strict=True))
+    assert labels == [(0.0, "middle left"), (0.9, "middle right")]
 
 
 def test_moment_labels_grow_sideways_clear_of_a_vertical_reaction():
