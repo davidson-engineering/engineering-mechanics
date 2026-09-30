@@ -11,7 +11,7 @@ command line, and get support reactions, joint forces, member forces and
 actuator torques, each one verified against equilibrium, plus an
 interactive HTML report with free-body diagrams.
 
-![A 3D free-body diagram from an engmech report: an excavator slewed off its tracks breaking out a slab, with its boom cylinder in compression, its arm and bucket cylinders in tension, the slab's force on the bucket teeth and the reaction from the ground](https://raw.githubusercontent.com/davidson-engineering/engmech/main/docs/images/report-3d.png)
+![A 3D free-body diagram from an engmech report: an excavator slewed off its tracks breaking out a slab, with its boom cylinder in compression, its arm and bucket cylinders in tension, the slab's force on the bucket teeth, the weights, and the ground pushing up under each end of the tracks](https://raw.githubusercontent.com/davidson-engineering/engmech/main/docs/images/report-3d.png)
 
 ## Quick start
 
