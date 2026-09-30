@@ -4,28 +4,44 @@ description: |
   A 20 t excavator, slewed 30° off its tracks, levers a slab of broken
   concrete up and out with its bucket teeth. In the arm's plane (s outward
   along the arm, n across it, z up) the slab pushes back on the teeth with
-  (-60, -8, -40) kN. Find the three cylinder forces and the load on the
-  ground. Self-weight is left out: this is the digging load's share, to
-  add to the dead-load case.
+  (-60, -8, -20) kN. Find the three cylinder forces, and the load under
+  each end of the tracks: are they all still pressing on the ground?
 
-  Hand check: each cylinder balances the moment of the slab force about
-  one pin axis (along n, so the 8 kN sideways does not count), for
-  everything beyond that pin. With r from the pin to the teeth in the
-  arm's plane, the moment about n is M = r_z F_s - r_s F_z:
-    bucket about S:                 M = (-1.3)(-60) - (0.8)(-40) = 110 kN·m
-    arm and bucket about N:         M = (-4.1)(-60) - (1.2)(-40) = 294 kN·m
-    boom, arm and bucket about F:   M = (-1.9)(-60) - (6.2)(-40) = 362 kN·m
+  Hand check. Each cylinder balances, about one pin axis (along n, so the
+  8 kN sideways does not count), the moments of the slab force and of the
+  weights beyond that pin (boom 17.652, arm 8.826, bucket 7.845 kN). With
+  r from the pin in the arm's plane, the slab gives M = r_z F_s - r_s F_z
+  and a weight W gives r_s W, in kN·m:
+    bucket about S:     (-1.3)(-60) - (0.8)(-20) + 0.3(7.845)  =  96.354
+    arm and bucket      (-4.1)(-60) - (1.2)(-20) + 0.2(8.826)
+      about N:            + 0.7(7.845)                           = 277.257
+    boom, arm and       (-1.9)(-60) - (6.2)(-20) + 2.25(17.652)
+      bucket about F:     + 5.2(8.826) + 5.7(7.845)              = 368.330
   A cylinder in tension T gives -0.67063 T about S, -1.01980 T about N
   and +0.89595 T about F, so
-    bucket cylinder T = 164.03 kN,  arm cylinder T = 288.29 kN,
-    boom cylinder T = -404.04 kN (compression).
-  The ground takes the slab force back: Fz = 40 kN, and about the
-  vertical Mz = -(7.1)(-8) = 56.8 kN·m.
+    bucket cylinder T = 143.68 kN,  arm cylinder T = 271.87 kN,
+    boom cylinder T = -411.11 kN (compression).
+
+  Ground. The track ends are equally stiff (the value does not matter),
+  so they share the load as in the elastic method. In the tracks' axes
+  (x forward, y to the left, from the centre of the tracks G), the loads
+  in kN, at (x, y) in m, are:
+    undercarriage 78.453 at (0, 0)      house 83.357 at (-1.212, -0.700)
+    boom 17.652 at (2.728, 1.575)       arm 8.826 at (5.283, 3.050)
+    bucket 7.845 at (5.716, 3.300)      slab (-47.962, -36.928, -20)
+                                          at (6.149, 3.550, 0.2)
+  They push down 216.133 kN, with a moment about G of Mx = -85.876 and
+  My = 151.941 kN·m. On track ends at x = ±2.3 m, y = ±1.2 m:
+    R = 216.133/4 + x My/(4 × 2.3²) - y Mx/(4 × 1.2²)
+    LF 88.439, LR 55.409, RF 52.658, RR 19.627 kN (left or right track,
+    front or rear end). All four push up: the tracks stay on the ground.
 
 units: {length: m, force: kN}
+gravity: -z
 
 parameters:
   psi: 30 deg       # slew angle of the house from the tracks
+  k: 50 kN/mm       # stiffness of each track end: any value, as long as they are equal
 
 points:
   G: [0, 0, 0]                                  # centre of the tracks, on the ground
@@ -44,16 +60,16 @@ points:
   # footprints joined by a crossbar, the slew post and the house
   K: [3.4*cos(psi), 3.4*sin(psi), 5.1]
   U: [6.2*cos(psi), 6.2*sin(psi), 0.6]
-  L1: [-2.3, 0.8, 0]
-  L2: [2.3, 0.8, 0]
-  L3: [2.3, 1.4, 0]
-  L4: [-2.3, 1.4, 0]
-  R1: [-2.3, -0.8, 0]
-  R2: [2.3, -0.8, 0]
-  R3: [2.3, -1.4, 0]
-  R4: [-2.3, -1.4, 0]
-  X1: [0, 0.8, 0]
-  X2: [0, -0.8, 0]
+  L1: [-2.3, 0.9, 0]
+  L2: [2.3, 0.9, 0]
+  L3: [2.3, 1.5, 0]
+  L4: [-2.3, 1.5, 0]
+  R1: [-2.3, -0.9, 0]
+  R2: [2.3, -0.9, 0]
+  R3: [2.3, -1.5, 0]
+  R4: [-2.3, -1.5, 0]
+  X1: [0, 0.9, 0]
+  X2: [0, -0.9, 0]
   O: [0, 0, 1.2]
   HF: [0.9*cos(psi), 0.9*sin(psi), 1.2]
   H1: [-2.4*cos(psi) + 1.25*sin(psi), -2.4*sin(psi) - 1.25*cos(psi), 1.2]
@@ -67,19 +83,30 @@ points:
 
 bodies:
   base:     # tracks and house, with the slew brake on
+    shapes:
+      - {type: point, name: undercarriage, mass: 8000 kg, at: [0, 0, 0.45]}
+      - {type: point, name: house, mass: 8500 kg, at: [-1.4*cos(psi), -1.4*sin(psi), 1.8]}
     outline: [A1, HF, H3, H7, H8, H4, H8, H5, H1, H5, H6, H2, H6, H7, H3, H4, H1, H2, HF, O,
               G, X2, R2, R3, R4, R1, X2, G, X1, L2, L3, L4, L1, X1]
-  boom: {outline: [F, K, N]}
-  arm: {outline: [B2, N, S]}
+  boom:
+    outline: [F, K, N]
+    shapes: [{type: point, mass: 1800 kg, at: [3.15*cos(psi), 3.15*sin(psi), 4.8]}]
+  arm:
+    outline: [B2, N, S]
+    shapes: [{type: point, mass: 900 kg, at: [6.1*cos(psi), 6.1*sin(psi), 2.9]}]
   bucket:
     outline: [S, C2, T, U, S]
+    shapes: [{type: point, mass: 800 kg, at: [6.6*cos(psi), 6.6*sin(psi), 0.9]}]
     loads:
       - name: slab
-        force: [-60*cos(psi) + 8*sin(psi), -60*sin(psi) - 8*cos(psi), -40]
+        force: [-60*cos(psi) + 8*sin(psi), -60*sin(psi) - 8*cos(psi), -20]
         at: T
 
-supports:
-  G: {type: fixed, at: G, body: base}
+supports:           # the ends of the tracks: left or right, front or rear
+  LF: {type: ball, at: [2.3, 1.2, 0], body: base, stiffness: {translational: k}}
+  LR: {type: ball, at: [-2.3, 1.2, 0], body: base, stiffness: {translational: k}}
+  RF: {type: ball, at: [2.3, -1.2, 0], body: base, stiffness: {translational: k}}
+  RR: {type: ball, at: [-2.3, -1.2, 0], body: base, stiffness: {translational: k}}
 
 joints:
   F: {type: pin, at: F, axis: [-sin(psi), cos(psi), 0], bodies: [base, boom]}
@@ -90,8 +117,10 @@ joints:
   bucket_cyl: {type: link, ends: [C1, C2], bodies: [arm, bucket]}
 
 checks:
-  - {target: bucket_cyl.T, expect: 164.03 kN}
-  - {target: arm_cyl.T, expect: 288.29 kN}
-  - {target: boom_cyl.T, expect: -404.04 kN}
-  - {target: G.Fz, expect: 40 kN}
-  - {target: G.Mz, expect: 56.8 kN*m}
+  - {target: bucket_cyl.T, expect: 143.68 kN}
+  - {target: arm_cyl.T, expect: 271.87 kN}
+  - {target: boom_cyl.T, expect: -411.11 kN}
+  - {target: LF.Fz, expect: 88.439 kN}
+  - {target: LR.Fz, expect: 55.409 kN}
+  - {target: RF.Fz, expect: 52.658 kN}
+  - {target: RR.Fz, expect: 19.627 kN}

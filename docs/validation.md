@@ -65,7 +65,7 @@ each change, in CI on Linux, macOS and Windows with Python 3.11 to 3.14.
 Item 3.2 runs in a separate CI job, because it needs the optional
 `validation` dependencies. Item 3.5 happens every time a model is solved.
 
-### 3.1 Analytical benchmarks (23 models, 127 values)
+### 3.1 Analytical benchmarks (23 models, 129 values)
 
 Thirteen examples (`src/engmech/examples`) and ten benchmark problems
 (`src/engmech/benchmarks`). Each model's description contains its hand
@@ -84,11 +84,10 @@ hydraulically actuated boom.
 
 The examples cover beams with point, triangular and uniform loads and
 couples, a 3D cantilever with self-weight, a three-hinged frame, a Warren
-truss, a boom on cables, the hydraulic cylinders of a slewed excavator, a
+truss, a boom on cables, the cylinders and track loads of an excavator, a
 shaft on bearings with a solved gear force, a slider-crank, a robot arm's
-holding torques, an eccentric bolt group,
-load combinations with capacity checks, a motor-driven arm and a
-precessing gyroscope.
+holding torques, an eccentric bolt group, load combinations with capacity
+checks, a motor-driven arm and a precessing gyroscope.
 
 ### 3.2 Independent solvers (oracles)
 

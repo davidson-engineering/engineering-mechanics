@@ -87,7 +87,7 @@ results.
 
 ## Results
 
-![The results of the excavator example: the fixed support's reaction, and the forces in the three pins and the three hydraulic cylinders, with each cylinder's axial force T](images/report-results.png)
+![The results of the excavator example: the reactions under the four ends of its tracks, and the forces in the three pins and the three hydraulic cylinders, with each cylinder's axial force T](images/report-results.png)
 
 Each load case and combination has its own results, in the model's output
 units (`--units` changes them):
@@ -129,7 +129,7 @@ check the result.
 
 ### 3D
 
-![The 3D free-body diagram of the excavator example: tracks and house, boom, arm and bucket, with the boom cylinder in compression and the arm and bucket cylinders in tension, the slab's force on the bucket teeth, and the reaction from the ground](images/report-3d.png)
+![The 3D free-body diagram of the excavator example: tracks and house, boom, arm and bucket, with the boom cylinder in compression and the arm and bucket cylinders in tension, the slab's force on the bucket teeth, the weight of each part, and the ground pushing up under each end of the tracks](images/report-diagram-3d.png)
 
 Spatial models are drawn in 3D, in an orthographic view as in an
 engineering drawing: drag to turn the model, scroll to zoom. The view has

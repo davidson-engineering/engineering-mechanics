@@ -40,6 +40,14 @@ TABLES = "#case-1 > h3:not(:last-of-type), #case-1 > .table-wrap, #case-1 > .cap
 DIAGRAM = "#case-1 > h3:last-of-type, #case-1 > .figure"
 DETAILS = "#case-1 > details"
 OPEN_DETAILS = "document.querySelectorAll('details').forEach(function (d) { d.open = true; });"
+# just the plot: no card, heading, view buttons or legend
+PLOT_ONLY = "#case-1 > h3:last-of-type, #figure-1 .views"
+PLAIN = "body { background: #fff; } section.card, .figure { border: 0; }"
+NO_LEGEND = (
+    "(function hide() { var gd = document.getElementById('fig-1');"
+    " if (gd && gd._fullLayout) Plotly.relayout(gd, {showlegend: false});"
+    " else setTimeout(hide, 50); })();"
+)
 
 # A model that equilibrium alone cannot solve, to show how a report says so
 # (the bundled examples all solve cleanly).
@@ -84,16 +92,22 @@ class Shot:
     css: str = ""
     script: str = ""
     pages: tuple[int, ...] = ()  # print these pages (1-based) instead of the screen
+    tight: bool = False  # crop the sides to the content too, not just top and bottom
+    width: int = WIDTH  # of the window, in CSS px
 
 
 SHOTS = [
-    # the README's hero: a 3D free-body diagram
+    # the README's hero: a 3D free-body diagram, cropped to the plot
     Shot(
         "report-3d.png",
         "excavator",
         keep="#case-1",
-        hide=f"#case-1 > .section-head, {TABLES}, {DETAILS}",
-        css="#case-1 > h3 { margin-top: 0; }",
+        hide=f"#case-1 > .section-head, {TABLES}, {PLOT_ONLY}, {DETAILS}",
+        # a larger plot than the report's default, so the drawing has room around its labels
+        css=PLAIN + " main { max-width: none; } .figure .plot { height: 860px; }",
+        script=NO_LEGEND,
+        tight=True,
+        width=1500,
     ),
     Shot("report.png", "load-combinations", keep="header.page, #summary"),
     Shot("report-warnings.png", GATE, keep="#summary, #case-1", hide=DETAILS),
@@ -102,6 +116,13 @@ SHOTS = [
     Shot(
         "report-diagram.png",
         "truss",
+        keep="#case-1",
+        hide=f"#case-1 > .section-head, {TABLES}, {DETAILS}",
+        css="#case-1 > h3 { margin-top: 0; }",
+    ),
+    Shot(
+        "report-diagram-3d.png",
+        "excavator",
         keep="#case-1",
         hide=f"#case-1 > .section-head, {TABLES}, {DETAILS}",
         css="#case-1 > h3 { margin-top: 0; }",
@@ -198,27 +219,31 @@ def run_chrome(args: list[str], output: Path, profile: Path) -> None:
         sys.exit(f"Chrome did not write {output.name}")
 
 
-def capture(html_path: Path, png_path: Path, profile: Path) -> None:
+def capture(html_path: Path, png_path: Path, profile: Path, width: int = WIDTH) -> None:
     args = [
         "--hide-scrollbars",
         f"--force-device-scale-factor={SCALE}",
-        f"--window-size={WIDTH},6000",
+        f"--window-size={width},6000",
         f"--screenshot={png_path}",
         html_path.as_uri(),
     ]
     run_chrome(args, png_path, profile)
 
 
-def trim(png_path: Path) -> None:
-    """Crop the empty background below (and above) the content, keeping a margin."""
+def trim(png_path: Path, sides: bool = False) -> None:
+    """Crop the empty background below and above the content (and beside
+    it, with ``sides``), keeping a margin."""
     image = Image.open(png_path).convert("RGB")
     background = Image.new("RGB", image.size, image.getpixel((0, 0)))
     box = ImageChops.difference(image, background).getbbox()
     if box is None:
         sys.exit(f"{png_path.name}: the screenshot is empty")
     pad = MARGIN * SCALE
+    left, right = (
+        (max(box[0] - pad, 0), min(box[2] + pad, image.width)) if sides else (0, image.width)
+    )
     top, bottom = max(box[1] - pad, 0), min(box[3] + pad, image.height)
-    image.crop((0, top, image.width, bottom)).save(png_path, optimize=True)
+    image.crop((left, top, right, bottom)).save(png_path, optimize=True)
 
 
 def print_pages(html_path: Path, png_path: Path, pages: tuple[int, ...], profile: Path) -> None:
@@ -281,8 +306,8 @@ def main() -> None:
             if shot.pages:
                 print_pages(html_path, png_path, shot.pages, tmp / "chrome-profile")
             else:
-                capture(html_path, png_path, tmp / "chrome-profile")
-                trim(png_path)
+                capture(html_path, png_path, tmp / "chrome-profile", shot.width)
+                trim(png_path, sides=shot.tight)
             compress(png_path)
             with Image.open(png_path) as im:
                 size = f"{im.width}x{im.height}"

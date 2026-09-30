@@ -298,6 +298,19 @@ def test_load_cases_are_compared_side_by_side():
     assert "Load cases compared" not in render_report(boom, plotly_cdn=True)
 
 
+def test_indented_notes_keep_their_layout():
+    """Indented lines in a description are shown as written: only the indent
+    they share is taken off, so a continuation line stays indented."""
+    from engmech.report.html import _paragraphs
+
+    text = "Hand check:\n    M = a\n          + b\n    N = c\n\nDone."
+    assert _paragraphs(text) == [
+        ("p", "Hand check:"),
+        ("pre", "M = a\n      + b\nN = c"),
+        ("p", "Done."),
+    ]
+
+
 def test_a_column_of_numbers_has_its_header_aligned_with_it():
     """The checks table's Value column sits between text columns; its header
     is right-aligned like its numbers (as in the terminal)."""

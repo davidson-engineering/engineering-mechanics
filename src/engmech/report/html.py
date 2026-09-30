@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import textwrap
 from pathlib import Path
 
 from jinja2 import Environment, PackageLoader, select_autoescape
@@ -153,7 +154,8 @@ def write_report(
 
 def _paragraphs(text: str) -> list[tuple[str, str]]:
     """Split a description into ('p', text) paragraphs, reflowing hard-wrapped
-    lines, and ('pre', text) blocks for indented lines such as equations."""
+    lines, and ('pre', text) blocks for indented lines such as equations,
+    which keep their layout (only the indent they share is taken off)."""
     out: list[tuple[str, str]] = []
     for block in (text or "").strip().split("\n\n"):
         lines = block.split("\n")
@@ -163,16 +165,16 @@ def _paragraphs(text: str) -> list[tuple[str, str]]:
                 if prose:
                     out.append(("p", " ".join(prose)))
                     prose = []
-                pre.append(line.strip())
+                pre.append(line.rstrip())
             else:
                 if pre:
-                    out.append(("pre", "\n".join(pre)))
+                    out.append(("pre", textwrap.dedent("\n".join(pre))))
                     pre = []
                 prose.append(line.strip())
         if prose:
             out.append(("p", " ".join(prose)))
         if pre:
-            out.append(("pre", "\n".join(pre)))
+            out.append(("pre", textwrap.dedent("\n".join(pre))))
     return out
 
 

@@ -963,7 +963,10 @@ class _Spatial:
         views: list[View],
         up: np.ndarray,
         plot_height: float,
+        per_px: float | None = None,
     ):
+        """``per_px``: model units per screen pixel the scene is drawn at;
+        by default, estimated from the drawing alone (see model_figure)."""
         self.results = results
         self.units = units
         self.views = views
@@ -988,12 +991,14 @@ class _Spatial:
         self.head = 0.045 * self.L * self.f_len  # arrowhead length
         self.right, self.up = _screen_axes(*_camera(up))
         self.plot_height = plot_height
-        # model units per screen pixel, for placing labels: first for the
-        # drawing alone, then (see model_figure) for the drawing with its labels
-        pts = self.p(results.model.all_points())
-        self.per_px = self._per_px(
-            SceneFit(pts.min(axis=0), pts.max(axis=0), [], self.right, self.up)
-        )
+        if per_px is None:
+            pts = self.p(results.model.all_points())
+            fit = SceneFit(pts.min(axis=0), pts.max(axis=0), [], self.right, self.up)
+            per_px = self._per_px(fit)
+        self.per_px = per_px
+        # the labels placed so far in each view (keyed by its bodies), as
+        # lines for the labels after them to keep clear of
+        self.placed: dict[tuple[str, ...], list[np.ndarray]] = {}
 
     def _per_px(self, fit: SceneFit) -> float:
         lo, hi, ratio = fit.solve(PLOT_ASPECT, self.plot_height)
@@ -1039,6 +1044,20 @@ class _Spatial:
         lines += [("", *ends) for ends in map(self._arrow_ends, arrows) if ends is not None]
         return [(name, self._screen([a, b])) for name, a, b in lines]
 
+    def _place(self, view: tuple[str, ...], anchor, text: str, where: str) -> str:
+        """Note a label placed in a view, as the edges and diagonals of its
+        box (so that a label inside it counts too); returns ``where``."""
+        xs, ys = _label_box(text, 11, where)
+        at = self._screen(anchor)
+        (x0, x1), (y0, y1) = (
+            at[0] + np.array(xs) * self.per_px,
+            at[1] + np.array(ys) * self.per_px,
+        )
+        c = [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
+        edges = [(c[0], c[1]), (c[1], c[2]), (c[2], c[3]), (c[3], c[0]), (c[0], c[2]), (c[1], c[3])]
+        self.placed.setdefault(view, []).extend(np.array(e) for e in edges)
+        return where
+
     def _crossings(self, anchor, text: str, where: str, lines) -> int:
         """How many of ``lines`` (on screen) a label at ``anchor`` would cross,
         or come within a few pixels of (lines have a width, arrows a head)."""
@@ -1052,29 +1071,55 @@ class _Spatial:
             (at[1] + (ys[0] - pad) * self.per_px, at[1] + (ys[1] + pad) * self.per_px),
         )
 
-    def _clear_side(self, p, text: str, lines, toward=None) -> str:
+    def _clear_side(self, p, text: str, lines, toward=None) -> tuple[str, int]:
         """The textposition for a label at ``p`` that crosses the fewest
-        ``lines``: the first clear one of the eight around it, trying first
-        the side ``toward`` (a direction in model axes) and then the sides
-        nearest to it, or without one, below, above, right, left and then
-        the corners."""
+        ``lines``, and how many it crosses: the first clear one of the eight
+        sides around it, trying first the side ``toward`` (a direction in
+        model axes) and then the sides nearest to it, or without one, below,
+        above, right, left and then the corners."""
         if toward is None:
-            order = [(0, -1), (0, 1), (1, 0), (-1, 0), (1, -1), (-1, -1), (1, 1), (-1, 1)]
+            sides = [(0, -1), (0, 1), (1, 0), (-1, 0), (1, -1), (-1, -1), (1, 1), (-1, 1)]
         else:
             angle = np.arctan2(np.asarray(toward) @ self.up, np.asarray(toward) @ self.right)
-            order = sorted(
+            sides = sorted(
                 ((dx, dy) for dx in (-1, 0, 1) for dy in (-1, 0, 1) if dx or dy),
                 key=lambda d: abs(np.angle(np.exp(1j * (np.arctan2(d[1], d[0]) - angle)))),
             )
         best, fewest = None, None
-        for dx, dy in order:
-            where = _text_position(dx, dy)
+        for side in sides:
+            where = _text_position(*side)
             crossed = self._crossings(p, text, where, lines)
             if fewest is None or crossed < fewest:
                 best, fewest = where, crossed
             if not crossed:
                 break
-        return best
+        return best, fewest
+
+    def _arrow_label(self, tail, tip, pull: bool, text: str, lines) -> tuple[np.ndarray, str]:
+        """Where an arrow's label goes: beyond its free end, growing away
+        from it, on the side nearest to that which crosses no ``lines``; else
+        beside the middle of its shaft, or slid straight out from its free
+        end by up to two lines of text, if either is clear; else beyond its
+        free end where it crosses the fewest. Returns the anchor and the
+        textposition."""
+        u = (tip - tail) / np.linalg.norm(tip - tail)
+        end, away = (tip, u) if pull else (tail, -u)
+        where, crossed = self._clear_side(end, text, lines, away)
+        if not crossed:
+            return end, where
+        dx, dy = away @ self.right, away @ self.up
+        if np.hypot(dx, dy) > 1e-9:
+            mid = (tail + tip) / 2
+            for side in ((-dy, dx), (dy, -dx)):
+                beside = _text_position(*side)
+                if not self._crossings(mid, text, beside, lines):
+                    return mid, beside
+            step = (dx * self.right + dy * self.up) / np.hypot(dx, dy) * 1.3 * 11 * self.per_px
+            straight = _text_position(dx, dy)
+            for k in (0.5, 1, 1.5, 2):
+                if not self._crossings(end + k * step, text, straight, lines):
+                    return end + k * step, straight
+        return end, where
 
     def _beside(self, a, b, centre, text: str = "", lines=()) -> np.ndarray:
         """The side of segment ab its label goes on, as seen on screen: the
@@ -1343,15 +1388,14 @@ class _Spatial:
                 )
             )
         if labels:
+            key = tuple(bodies)
             lines = [ends for _, ends in self._drawn(bodies, view.arrows)]
-            traces += _text_traces_3d(
-                [
-                    (np.array(p), text, self._clear_side(np.array(p), text, lines))
-                    for p, text in ((p, ", ".join(names)) for p, names in labels.items())
-                ],
-                PALETTE["support"],
-                "supports",
-            )
+            placed = []
+            for p, names in labels.items():
+                p, text = np.array(p), ", ".join(names)
+                where, _ = self._clear_side(p, text, lines + self.placed.get(key, []))
+                placed.append((p, text, self._place(key, p, text, where)))
+            traces += _text_traces_3d(placed, PALETTE["support"], "supports")
         if traces:
             traces[0].showlegend = True
             traces[0].name = "Supports & joints"
@@ -1375,6 +1419,7 @@ class _Spatial:
         for a in arrows:
             by_group.setdefault(a.group, []).append(a)
         lines = [ends for _, ends in self._drawn(bodies, arrows)]
+        key = tuple(bodies)
         traces = []
         for group, items in by_group.items():
             color = PALETTE[group]
@@ -1406,7 +1451,8 @@ class _Spatial:
                     lz += [*tails[:, 2], None]
                     htext += [a.hover] * len(tails) + [""]
                     away = -np.sign(d["w1"] + d["w2"] or 1.0) * np.asarray(d["direction"], float)
-                    labels.append((tails[len(tails) // 2], a.label, self._side(away)))
+                    mid, where = tails[len(tails) // 2], self._side(away)
+                    labels.append((mid, a.label, self._place(key, mid, a.label, where)))
                     continue
                 ends = self._arrow_ends(a)
                 if ends is None:
@@ -1421,8 +1467,9 @@ class _Spatial:
                 if a.kind == "moment":  # double-headed: right-hand rule vector
                     cones.append((tip - u * self.head * 0.9, u, 1.0))
                 # beyond the free end of the arrow, growing away from it
-                end, away = (tip, u) if a.pull else (tail, -u)
-                labels.append((end, a.label, self._clear_side(end, a.label, lines, away)))
+                obstacles = lines + self.placed.get(key, [])
+                at, where = self._arrow_label(tail, tip, a.pull, a.label, obstacles)
+                labels.append((at, a.label, self._place(key, at, a.label, where)))
             if not lx:
                 continue
             traces.append(
@@ -1448,6 +1495,7 @@ class _Spatial:
         coloured = _coloured_members(case, self.results, view.bodies)
         centre = self.p(self.results.model.all_points().mean(axis=0))
         drawn = self._drawn(view.bodies, view.arrows)
+        key = tuple(view.bodies)
         traces = []
         for sign, key in ((1, "tension"), (-1, "compression")):
             chosen = [m for m in members if np.sign(m[3]) == sign and m[0] in coloured]
@@ -1462,8 +1510,9 @@ class _Spatial:
                 text = f"{self.units.format(abs(t), 'force')} {'T' if t > 0 else 'C'}"
                 hover += [f"<b>{name}</b>: {text}"] * 2 + [""]
                 others = [ends for other, ends in drawn if other != name]
+                others += self.placed.get(key, [])
                 side = self._side(self._beside(a, b, centre, text, others))
-                labels.append(((a + b) / 2, text, side))
+                labels.append(((a + b) / 2, text, self._place(key, (a + b) / 2, text, side)))
             color = PALETTE[key]
             traces.append(
                 go.Scatter3d(
@@ -1591,7 +1640,8 @@ def model_figure(
     if not planar:
         # the labels grow the scene and so shrink the drawing: place them
         # again, for the scale the scene is drawn at with them
-        painter.per_px = painter.scale(fig)
+        per_px = painter.scale(fig)
+        painter = _Spatial(results, units, views, view_up, painter.plot_height, per_px)
         fig, visibility = draw()
 
     for i, tr in enumerate(fig.data):
