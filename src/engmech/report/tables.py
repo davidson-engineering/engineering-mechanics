@@ -13,7 +13,7 @@ import numpy as np
 from engmech.model import GROUND, BuiltModel
 from engmech.results import CaseResult, JointResult, Results
 from engmech.solver import ROW_NAMES
-from engmech.units import UnitSystem, format_number
+from engmech.units import UnitSystem, format_number, unit_text
 
 INDETERMINATE = "indet."
 
@@ -563,7 +563,7 @@ def parameters_table(model: BuiltModel) -> Table | None:
         return None
     rows = []
     for name, q in model.parameters.items():
-        unit = "" if q.unitless else f"{q.units:~P}"
+        unit = "" if q.unitless else unit_text(q.units)
         rows.append(
             [
                 Cell(name, "strong"),

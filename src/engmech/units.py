@@ -176,10 +176,10 @@ class UnitSystem:
         return float(Q_(1.0, k.si).to(self.unit(kind_name)).magnitude)
 
     def label(self, kind_name: str) -> str:
-        """Pretty unit label for tables, e.g. 'kN·m'."""
+        """Pretty unit label for tables, e.g. 'kN⋅m'."""
         if kind_name == "dimensionless":
             return ""
-        return f"{ureg.Unit(self.unit(kind_name)):~P}"
+        return unit_text(ureg.Unit(self.unit(kind_name)))
 
     def format(self, value_si: float, kind_name: str, digits: int = 4, unit: bool = True) -> str:
         text = format_number(float(value_si) * self.factor(kind_name), digits)
@@ -220,6 +220,13 @@ def _is_angle(q: pint.Quantity) -> bool:
     if q.unitless or not q.dimensionless:
         return False
     return "radian" in {str(u) for u in q.to_root_units().units._units}
+
+
+def unit_text(unit) -> str:
+    """A unit (or a quantity's units) as shown to people, e.g. 'kN⋅m'. pint
+    changed the product dot between versions (· before 0.26, ⋅ since), so it
+    is fixed here: output is the same whichever pint is installed."""
+    return f"{unit:~P}".replace("\u00b7", "\u22c5")
 
 
 def format_number(x: float, digits: int = 4) -> str:
@@ -537,12 +544,12 @@ class _Evaluator:
                 f"{fname}() needs an angle with units, e.g. {fname}(30 deg) or {fname}(0.5 rad)"
             )
         if not q.dimensionless:
-            raise self.fail(f"{fname}() needs an angle, got {q.units:~P}")
+            raise self.fail(f"{fname}() needs an angle, got {unit_text(q.units)}")
         return float(q.to("rad").magnitude)
 
     def _number(self, q: pint.Quantity, fname: str) -> float:
         if not q.dimensionless:
-            raise self.fail(f"{fname}() needs a plain number, got {q.units:~P}")
+            raise self.fail(f"{fname}() needs a plain number, got {unit_text(q.units)}")
         return float(q.to("dimensionless").magnitude)
 
     def visit_Call(self, node: ast.Call):
@@ -565,10 +572,10 @@ class _Evaluator:
         except InputError:
             raise
         except (ValueError, OverflowError):
-            raise self.fail(f"{fname}() of {a:~P} is undefined") from None
+            raise self.fail(f"{fname}() of {unit_text(a)} is undefined") from None
         if fname == "sqrt":
             if a.magnitude < 0:
-                raise self.fail(f"sqrt() of a negative value ({a:~P})")
+                raise self.fail(f"sqrt() of a negative value ({unit_text(a)})")
             return a**0.5
         if fname == "abs":
             return abs(a)
@@ -648,10 +655,10 @@ class Context:
 
 
 def _to_si(q: pint.Quantity, k: Kind, original: Any) -> float:
-    shown = original if isinstance(original, str | int | float) else f"{q:~P}"
+    shown = original if isinstance(original, str | int | float) else unit_text(q)
     if k.name == "angle":
         if not q.dimensionless:
-            raise InputError(f"{shown!r} is not an angle (it has units of {q.units:~P})")
+            raise InputError(f"{shown!r} is not an angle (it has units of {unit_text(q.units)})")
         return float(q.to("rad").magnitude)
     if k.name in ("angular_velocity", "angular_acceleration") and any(
         "hertz" in str(name) for name in q.units._units
@@ -666,8 +673,8 @@ def _to_si(q: pint.Quantity, k: Kind, original: Any) -> float:
         noun = k.name.replace("_", " ")
         article = "an" if noun[0] in "aeiou" else "a"
         raise InputError(
-            f"{shown!r} is not {article} {noun}: it has units of {q.units:~P}, "
-            f"but {article} {noun} is measured in units like {ureg.Unit(k.si):~P}"
+            f"{shown!r} is not {article} {noun}: it has units of {unit_text(q.units)}, "
+            f"but {article} {noun} is measured in units like {unit_text(ureg.Unit(k.si))}"
         ) from None
 
 

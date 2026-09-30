@@ -113,7 +113,7 @@ def test_unit_after_brackets_and_on_items_is_rejected():
 
 def test_unit_systems():
     us = UnitSystem.from_spec("US-in")
-    assert us.label("moment") == "lbf·in" or us.label("moment") == "lbf⋅in"
+    assert us.label("moment") == "lbf\u22c5in"  # the same dot whichever pint is installed
     assert us.factor("force") == pytest.approx(1 / 4.4482216152605)
     custom = UnitSystem.from_spec({"system": "SI-kN", "length": "mm", "moment": "kN*m"})
     assert custom.factor("length") == pytest.approx(1000)
