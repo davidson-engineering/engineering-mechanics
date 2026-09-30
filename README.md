@@ -13,6 +13,9 @@ interactive HTML report with free-body diagrams.
 
 ![A 3D free-body diagram from an engmech report: an excavator slewed off its tracks breaking out a slab, with its boom cylinder in compression, its arm and bucket cylinders in tension, the slab's force on the bucket teeth, the weights, and the ground pushing up under each end of the tracks](https://raw.githubusercontent.com/davidson-engineering/engmech/main/docs/images/report-3d.png)
 
+*The `excavator` example that ships with engmech. Open its report with
+`engmech examples copy excavator` and `engmech report excavator.yaml --open`.*
+
 ## Quick start
 
 ```bash
