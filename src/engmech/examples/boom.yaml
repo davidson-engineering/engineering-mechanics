@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=https://raw.githubusercontent.com/davidson-engineering/engineering-mechanics/main/schema/engmech.schema.json
+# yaml-language-server: $schema=https://raw.githubusercontent.com/davidson-engineering/engmech/main/schema/engmech.schema.json
 name: Boom held by two cables
 description: |
   A 4 m boom with a ball-and-socket at A is held horizontal by cables BD

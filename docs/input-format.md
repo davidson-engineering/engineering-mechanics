@@ -19,7 +19,7 @@ For autocompletion and inline validation in VS Code (YAML extension) or any
 editor using yaml-language-server, put this on the first line:
 
 ```yaml
-# yaml-language-server: $schema=https://raw.githubusercontent.com/davidson-engineering/engineering-mechanics/main/schema/engmech.schema.json
+# yaml-language-server: $schema=https://raw.githubusercontent.com/davidson-engineering/engmech/main/schema/engmech.schema.json
 ```
 
 ## Top-level sections

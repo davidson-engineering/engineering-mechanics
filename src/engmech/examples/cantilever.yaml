@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=https://raw.githubusercontent.com/davidson-engineering/engineering-mechanics/main/schema/engmech.schema.json
+# yaml-language-server: $schema=https://raw.githubusercontent.com/davidson-engineering/engmech/main/schema/engmech.schema.json
 name: Bent cantilever bar
 description: |
   An L-shaped bar welded to a wall at A: 1 m along x, then 0.5 m along y.

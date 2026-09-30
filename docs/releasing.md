@@ -28,7 +28,7 @@ upload):
 |---|---|
 | PyPI project name | `engmech` |
 | Owner | `davidson-engineering` |
-| Repository name | `engineering-mechanics` |
+| Repository name | `engmech` |
 | Workflow name | `release.yml` |
 | Environment name | `pypi` |
 
