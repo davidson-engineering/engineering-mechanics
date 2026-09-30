@@ -36,7 +36,7 @@ from engmech.model import Check, Model
 from engmech.shapes import Box, Cone, CustomMass, Cylinder, PointMass, Rod, Sphere
 from engmech.units import UnitSystem
 
-__version__ = "0.5.0"  # the package version: pyproject.toml reads it from here
+__version__ = "0.6.0"  # the package version: pyproject.toml reads it from here
 
 Revolute = Pin
 Prismatic = Slider
