@@ -209,7 +209,7 @@ Every example states its hand calculation in its description, and its
 | `frame` | three-hinged frame, joint forces, free-body views |
 | `truss` | method of joints with particles and links |
 | `boom` | 3D boom on a ball joint and two cables |
-| `excavator` | 3D machine: hydraulic cylinder forces and the load on the ground |
+| `excavator` | 3D machine: cylinder forces, and the load under each end of the tracks |
 | `shaft` | shaft on bearings with a solved-for gear force |
 | `slider-crank` | mechanism held by an actuated crank |
 | `robot-arm` | holding torques of a two-link arm |
@@ -226,7 +226,7 @@ established software. The
 has the full evidence, the assumptions and limitations, and a procedure for
 using engmech inside a quality system. In brief:
 
-- **Hand calculations:** 23 benchmark models reproduce 127 hand-derived
+- **Hand calculations:** 23 benchmark models reproduce 129 hand-derived
   values. Ten of them were written and solved by a reviewer who never saw
   the solver code.
 - **Independent solvers:**
