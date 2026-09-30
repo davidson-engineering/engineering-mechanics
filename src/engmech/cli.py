@@ -23,7 +23,7 @@ from engmech import __version__
 from engmech.errors import InputError
 from engmech.io.loader import ModelFileError, load_model
 from engmech.model import Model
-from engmech.units import UnitSystem, evaluate, format_number
+from engmech.units import UnitSystem, evaluate, format_number, unit_text
 
 EXIT_OK, EXIT_INPUT, EXIT_RESULT = 0, 1, 2
 
@@ -381,7 +381,7 @@ def sweep(file, param, outputs, case, sets, units, csv_path, plot_path):
     else:
         keys = [k for k in keys if any(r[1][k] not in (None, 0.0) for r in rows)]
     u = unit_system or results.model.output_units
-    param_unit = f"{values[0].units:~P}" if str(values[0].units) != "dimensionless" else ""
+    param_unit = unit_text(values[0].units) if str(values[0].units) != "dimensionless" else ""
     headers = [f"{name}" + (f" ({param_unit})" if param_unit else "")]
     for k in keys:
         kind = _output_kind(results, k)

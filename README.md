@@ -100,19 +100,27 @@ A report leads with the results:
 1. **Summary**: whether each load case is balanced and determinate, how
    many of the file's checks pass, and any warning that applies to the
    whole model, such as free motions or sensitivity to geometry.
-2. **Results** for each load case and combination: support reactions,
+2. **Load cases compared**, when there is more than one: every support
+   reaction and joint force in every load case and combination side by
+   side, with the maximum and minimum and the case each comes from.
+3. **Results** for each load case and combination: support reactions,
    joint forces and solved loads, then an interactive free-body diagram.
    Planar models are drawn with engineering support symbols; spatial models
    in 3D, with z up or, for models built with y or x up (as from CAD),
    `report: {up: y}`. Two-force members are coloured by tension and
-   compression, and a dropdown switches between the whole model and each
-   body on its own.
-3. **Checks**, **notes** from the model's description (hand calculations,
+   compression, and buttons switch between the whole model and the free
+   body of each part.
+4. **Checks**, **notes** from the model's description (hand calculations,
    assumptions), and the **model** itself: determinacy, units, points,
    parameters and mass properties.
-4. **Provenance**: the engmech, Python and library versions, the platform,
+5. **Provenance**: the engmech, Python and library versions, the platform,
    parameter overrides, and the input file with its SHA-256, so a result
    can be traced to exactly what produced it.
+
+Printed or saved as PDF, a report becomes a calculation document: every
+diagram is drawn to the page width, every free body is shown with its own
+caption, and collapsed sections (equilibrium verification, applied loads,
+the input file) are printed in full.
 
 ![A 3D free-body diagram of a boom held by a ball joint and two cables](https://raw.githubusercontent.com/davidson-engineering/engineering-mechanics/main/docs/images/report-3d.png)
 

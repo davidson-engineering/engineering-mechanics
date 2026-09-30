@@ -43,6 +43,8 @@
   section.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px 24px; margin: 18px 0; }
   .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
   .section-head .sub { color: var(--muted); font-size: 13px; }
+  .jump a { color: var(--accent); text-decoration: none; }
+  .jump a:hover { text-decoration: underline; }
   .status { display: flex; gap: 12px; align-items: flex-start; border-radius: 8px; padding: 12px 14px; margin: 8px 0; border: 1px solid; }
   .status .mark { font-weight: 700; font-size: 16px; line-height: 1.4; width: 1.2em; text-align: center; }
   .status .text { flex: 1; }
@@ -61,10 +63,22 @@
   ul.warnings.warn li::marker { color: var(--warn); }
   .figure { border: 1px solid var(--line); border-radius: 8px; margin: 6px 0 18px; overflow: hidden; background: #fff; }
   .figure .plot { width: 100%; height: 620px; }
+  .views { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 10px 12px 0; }
+  .views[hidden] { display: none; }
+  .views-label { font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-right: 4px; }
+  .views button { font: inherit; font-size: 13px; line-height: 1.3; padding: 4px 12px; border: 1px solid var(--line-strong); border-radius: 999px; background: var(--card); color: var(--ink-2); cursor: pointer; }
+  .views button:hover { border-color: var(--muted); color: var(--ink); }
+  .views button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .views button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: #fff; }
+  .print-views { display: none; }
+  .print-view { margin: 0 0 14px; }
+  .print-view img { display: block; width: 100%; height: auto; }
+  .print-view figcaption { color: var(--muted); font-size: 12px; margin-top: 2px; }
   .table-wrap { overflow-x: auto; margin: 0 0 4px; }
-  table.data { border-collapse: collapse; width: 100%; font-size: 14px; font-variant-numeric: tabular-nums; }
-  table.data th { text-align: left; font-weight: 600; color: var(--ink-2); font-size: 12.5px; border-bottom: 1.5px solid var(--line-strong); padding: 7px 10px; white-space: nowrap; }
-  table.data td { padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table.data { border-collapse: collapse; width: auto; min-width: min(100%, 360px); font-size: 14px; font-variant-numeric: tabular-nums; }
+  table.data th { text-align: left; font-weight: 600; color: var(--ink-2); font-size: 12.5px; border-bottom: 1.5px solid var(--line-strong); padding: 7px 14px 7px 10px; white-space: nowrap; }
+  table.data td { padding: 7px 14px 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table.data th.num, table.data td.num { padding-left: 22px; }
   table.data tbody tr:last-child td { border-bottom: none; }
   table.data .num { text-align: right; white-space: nowrap; }
   table.data td.strong { font-weight: 600; }
@@ -102,13 +116,24 @@
     section.card { padding: 16px; }
     h1 { font-size: 24px; }
     .figure .plot { height: 440px; }
+    .figure.is-3d .plot { height: 380px; }  /* a narrow 3D view is limited by its width */
   }
   @media print {
+    @page { margin: 16mm 14mm; }
     body { background: #fff; font-size: 12px; }
-    main { padding: 0; max-width: none; }
-    section.card { border: none; padding: 0; margin: 14px 0; break-inside: avoid-page; }
-    details { display: block; }
-    details > summary::before { content: ""; }
+    main { padding: 0 2px; max-width: none; }  /* room for borders at the page edge */
+    section.card { border: none; padding: 0; margin: 18px 0 0; }
+    h1, h2, h3, .section-head, summary { break-after: avoid; }
+    tr, .status, .print-view, .notes pre, .inertia, dl.facts { break-inside: avoid; }
+    details { display: block; border-top: none; padding-top: 0; }
+    details::details-content { content-visibility: visible; display: block; }
+    details > summary { font-size: 15px; color: var(--ink); margin: 16px 0 6px; }
+    details > summary::before { content: ""; width: 0; }
+    .table-wrap { overflow: visible; }
+    .figure { border: none; border-radius: 0; }
+    .views, .modebar, .jump { display: none !important; }
     .figure .plot { height: 480px; }
-    .modebar { display: none !important; }
+    .figure.has-print-views .plot { display: none; }
+    .figure.has-print-views .print-views { display: block; }
+    pre.source { white-space: pre-wrap; word-break: break-all; }
   }

@@ -230,13 +230,33 @@ def _skeleton(results: Results, name: str) -> list[tuple[np.ndarray, np.ndarray]
 def _closest_on_segments(p: np.ndarray, segments) -> np.ndarray:
     best, best_d = None, np.inf
     for a, b in segments:
-        ab = b - a
-        t = 0.0 if not ab @ ab else float(np.clip((p - a) @ ab / (ab @ ab), 0, 1))
-        q = a + t * ab
+        q = _closest_on_segment(p, a, b)
         d = np.linalg.norm(p - q)
         if d < best_d:
             best, best_d = q, d
     return best
+
+
+def _closest_on_segment(p: np.ndarray, a: np.ndarray, b: np.ndarray) -> np.ndarray:
+    ab = b - a
+    t = 0.0 if not ab @ ab else float(np.clip((p - a) @ ab / (ab @ ab), 0, 1))
+    return a + t * ab
+
+
+def _distance_to_segment(p: np.ndarray, a: np.ndarray, b: np.ndarray) -> float:
+    return float(np.linalg.norm(p - _closest_on_segment(p, a, b)))
+
+
+def _away(n: np.ndarray, at: np.ndarray, centre: np.ndarray, tol: float) -> np.ndarray:
+    """Of the 2D directions n and -n, the one pointing away from ``centre``, so
+    that a label beside a line at ``at`` faces out of the drawing, where there
+    is room. Near the centre: the one pointing up, or right."""
+    side = float(n @ (np.asarray(at) - np.asarray(centre)))
+    if abs(side) > tol:
+        return n if side > 0 else -n
+    if n[1] < -1e-9 or (abs(n[1]) <= 1e-9 and n[0] < 0):
+        return -n
+    return n
 
 
 def _lever_lines(results: Results, arrows: list[Arrow]) -> list[tuple[np.ndarray, np.ndarray]]:
@@ -269,6 +289,13 @@ def _members(case: CaseResult, results: Results, bodies: list[str]):
         geo = results.model.joints[j.name].geometry
         out.append((j.name, geo.point_a, geo.point_b, j.scalars["T"]))
     return out
+
+
+def _coloured_members(case: CaseResult, results: Results, bodies: list[str]) -> set[str]:
+    """The members drawn coloured by their force (those that carry one)."""
+    members = _members(case, results, bodies)
+    tmax = max((abs(t) for *_, t in members), default=0.0) or 1.0
+    return {name for name, *_, t in members if abs(t) > 1e-9 * tmax}
 
 
 def _dedupe(points: list[np.ndarray], tol: float) -> np.ndarray:
@@ -473,7 +500,9 @@ class _Planar:
         return traces
 
     # --- supports
-    def support_traces(self, bodies: list[str]) -> list[go.Scatter]:
+    def support_traces(self, bodies: list[str], hidden=()) -> list[go.Scatter]:
+        """Support symbols, joints, and link and cable lines (except ``hidden``
+        ones, drawn coloured as members instead)."""
         model = self.results.model
         g = self.glyph * self.f_len
         segs: list[np.ndarray] = []
@@ -491,7 +520,8 @@ class _Planar:
                 target = joints_solid if j.type_name == "fixed" else joints_open
                 if j.type_name in ("link", "cable", "strut"):
                     pa = np.array(self.xy(geo.point_a))
-                    segs.append(np.array([pa, p]))
+                    if j.name not in hidden:
+                        segs.append(np.array([pa, p]))
                     joints_open += [pa, p]
                 else:
                     target.append(p)
@@ -655,6 +685,7 @@ class _Planar:
         if not members:
             return []
         tmax = max(abs(t) for *_, t in members) or 1.0
+        centre = np.mean([self.xy(p) for _, a, b, _ in members for p in (a, b)], axis=0)
         traces = []
         for sign, key in ((1, "tension"), (-1, "compression")):
             chosen = [m for m in members if np.sign(m[3]) == sign and abs(m[3]) > 1e-9 * tmax]
@@ -667,20 +698,17 @@ class _Planar:
                 y += [ay_, by, None]
                 label = f"{self.units.format(abs(t), 'force')} {'T' if t > 0 else 'C'}"
                 hover += [f"<b>{name}</b>: {label}"] * 2 + [""]
-                # label beside the member (above it, or right of a vertical one),
+                # label beside the member, on the side facing out of the drawing,
                 # anchored so the text grows away from the line
                 d = np.array([bx - ax_, by - ay_])
                 n = np.array([-d[1], d[0]]) / max(np.linalg.norm(d), 1e-300)
-                if n[1] < -1e-9 or (abs(n[1]) <= 1e-9 and n[0] < 0):
-                    n = -n
+                mid = np.array([(ax_ + bx) / 2, (ay_ + by) / 2])
+                n = _away(n, mid, centre, 0.05 * self.L * self.f_len)
                 off = n * self.glyph * 0.35 * self.f_len
-                tx.append((ax_ + bx) / 2 + off[0])
-                ty.append((ay_ + by) / 2 + off[1])
+                tx.append(mid[0] + off[0])
+                ty.append(mid[1] + off[1])
                 text.append(label)
-                if abs(n[0]) < 0.5:
-                    where.append("top center")
-                else:
-                    where.append("middle right" if n[0] > 0 else "middle left")
+                where.append(_text_position(*n))
             color = PALETTE[key]
             traces.append(
                 go.Scatter(
@@ -730,15 +758,37 @@ class _Planar:
         ]
 
     # --- arrows
-    def arrow_traces(self, arrows: list[Arrow]) -> list[go.Scatter]:
+    def _segments(self, bodies: list[str]) -> list[tuple[np.ndarray, np.ndarray]]:
+        """The lines drawn in a view: bodies drawn as lines, and links and
+        cables (in plot units)."""
+        segments = []
+        for name in bodies:
+            for a, b in _skeleton(self.results, name) or []:
+                segments.append((np.array(self.xy(a)), np.array(self.xy(b))))
+        for j in self.results.model.joints.values():
+            if (
+                j.type_name in ("link", "strut", "cable")
+                and bodies
+                and (j.body_a in bodies or j.body_b in bodies)
+            ):
+                a, b = j.geometry.point_a, j.geometry.point_b
+                segments.append((np.array(self.xy(a)), np.array(self.xy(b))))
+        return segments
+
+    def arrow_traces(self, arrows: list[Arrow], bodies: list[str] = ()) -> list[go.Scatter]:
         traces = []
         by_group: dict[str, list[Arrow]] = {}
         for a in arrows:
             by_group.setdefault(a.group, []).append(a)
+        segments = self._segments(list(bodies))
+        clear = self.glyph * 0.8 * self.f_len
+        drawn = [p for s in segments for p in s] + [np.array(self.xy(a.point)) for a in arrows]
+        centre = np.mean(drawn, axis=0) if drawn else np.zeros(2)
         for group, items in by_group.items():
             color = PALETTE[group]
             mx, my, sizes, htext = [], [], [], []
             tx, ty, ttext = [], [], []
+            beside: dict[int, str] = {}  # labels moved beside their arrow: textposition
             for a in items:
                 if a.distributed:
                     others = [self.xy(b.point) for b in arrows if b.distributed is None]
@@ -763,8 +813,15 @@ class _Planar:
                     my += [tail[1], tip[1], None]
                     sizes += [0, 13, 0]
                     htext += [a.hover, a.hover, ""]
+                    # the label goes beyond the free end of the arrow, or beside
+                    # it where that would put it on a drawn line (an arrow along
+                    # a link, as in a truss joint's free body)
                     far = tip if a.pull else tail
                     pad = far + (u if a.pull else -u) * self.glyph * 0.9 * self.f_len
+                    if any(_distance_to_segment(pad, p, q) < clear for p, q in segments):
+                        n = _away(np.array([-u[1], u[0]]), far, centre, clear)
+                        pad = far + n * self.glyph * 0.3 * self.f_len
+                        beside[len(ttext)] = _text_position(*n)
                     tx.append(pad[0])
                     ty.append(pad[1])
                     ttext.append(a.label)
@@ -781,9 +838,14 @@ class _Planar:
                     my += [*arc[:, 1], None]
                     sizes += [0] * 39 + [13, 0]
                     htext += [a.hover] * 40 + [""]
-                    # label in the gap of the arc (below it), clear of loads drawn above
+                    # label in the gap of the arc (below it), clear of loads drawn
+                    # above, growing sideways: a vertical force at the same point
+                    # (a fixed support's reaction) runs through the gap too
                     gap = start - np.deg2rad(50) * np.sign(Mz)
-                    lab = c + r * 1.5 * np.array([np.cos(gap), np.sin(gap)])
+                    d = np.array([np.cos(gap), np.sin(gap)])
+                    lab = c + r * 1.3 * d
+                    vertical = "bottom" if d[1] < -0.38 else ("top" if d[1] > 0.38 else "middle")
+                    beside[len(ttext)] = f"{vertical} {'left' if d[0] < 0 else 'right'}"
                     tx.append(lab[0])
                     ty.append(lab[1])
                     ttext.append(a.label)
@@ -814,6 +876,8 @@ class _Planar:
                     y=ty,
                     mode="text",
                     text=ttext,
+                    textposition=[beside.get(i, "middle center") for i in range(len(ttext))],
+                    cliponaxis=False,  # a label near the edge may run into the margin
                     legendgroup=group,
                     showlegend=False,
                     textfont=dict(color=color, size=12, family=FONT),
@@ -926,16 +990,19 @@ class _Spatial:
             return "top center"  # pointing at the viewer
         return _text_position(dx, dy)
 
-    def _beside(self, a, b) -> np.ndarray:
-        """The side of segment ab its label goes on: above it on screen, or to
-        the right of it when it is vertical on screen."""
-        d = np.asarray(b, float) - np.asarray(a, float)
-        dx, dy = d @ self.right, d @ self.up
-        nx, ny = -dy, dx
-        if ny < -1e-9 * np.hypot(nx, ny) or (abs(ny) <= 1e-9 * np.hypot(nx, ny) and nx < 0):
-            nx, ny = -nx, -ny
-        if nx == ny == 0:
-            nx, ny = 0.0, 1.0
+    def _beside(self, a, b, centre) -> np.ndarray:
+        """The side of segment ab its label goes on, as seen on screen: facing
+        away from ``centre`` (out of the drawing), else above it, or right of
+        it when it is vertical on screen."""
+        a, b = np.asarray(a, float), np.asarray(b, float)
+        d = b - a
+        normal = np.array([-(d @ self.up), d @ self.right])
+        if not normal.any():
+            return self.up
+        normal /= np.linalg.norm(normal)
+        mid = np.array([(a + b) / 2 @ self.right, (a + b) / 2 @ self.up])
+        at_centre = np.array([centre @ self.right, centre @ self.up])
+        nx, ny = _away(normal, mid, at_centre, 0.05 * self.L * self.f_len)
         return nx * self.right + ny * self.up
 
     def body_traces(self, name: str, color: str) -> list:
@@ -1102,7 +1169,9 @@ class _Spatial:
             )
         ]
 
-    def support_traces(self, bodies: list[str]) -> list:
+    def support_traces(self, bodies: list[str], hidden=()) -> list:
+        """Support markers, and link and cable lines (except ``hidden`` ones,
+        drawn coloured as members instead: two lines in one place flicker)."""
         model = self.results.model
         symbols = {
             "fixed": "square",
@@ -1132,7 +1201,7 @@ class _Spatial:
                 continue
             geo = j.geometry
             p = self.p(geo.point_b)
-            if j.type_name in ("link", "strut", "cable"):
+            if j.type_name in ("link", "strut", "cable") and j.name not in hidden:
                 a = self.p(geo.point_a)
                 lx += [a[0], p[0], None]
                 ly += [a[1], p[1], None]
@@ -1195,7 +1264,7 @@ class _Spatial:
             traces[0].name = "Supports & joints"
         return traces
 
-    def arrow_traces(self, arrows: list[Arrow]) -> list:
+    def arrow_traces(self, arrows: list[Arrow], bodies: list[str] = ()) -> list:
         by_group: dict[str, list[Arrow]] = {}
         for a in arrows:
             by_group.setdefault(a.group, []).append(a)
@@ -1276,9 +1345,11 @@ class _Spatial:
 
     def member_traces(self, case: CaseResult, bodies: list[str]) -> list:
         members = _members(case, self.results, bodies)
+        coloured = _coloured_members(case, self.results, bodies)
+        centre = self.p(self.results.model.all_points().mean(axis=0))
         traces = []
         for sign, key in ((1, "tension"), (-1, "compression")):
-            chosen = [m for m in members if np.sign(m[3]) == sign]
+            chosen = [m for m in members if np.sign(m[3]) == sign and m[0] in coloured]
             if not chosen:
                 continue
             x, y, z, labels = [], [], [], []
@@ -1288,7 +1359,8 @@ class _Spatial:
                 y += [a[1], b[1], None]
                 z += [a[2], b[2], None]
                 text = f"{self.units.format(abs(t), 'force')} {'T' if t > 0 else 'C'}"
-                labels.append(((a + b) / 2, text, self._side(self._beside(a, b))))
+                side = self._side(self._beside(a, b, centre))
+                labels.append(((a + b) / 2, text, side))
             color = PALETTE[key]
             traces.append(
                 go.Scatter3d(
@@ -1400,13 +1472,14 @@ def model_figure(
             for tr in traces:
                 tr.showlegend = False
         add(traces, in_views)
+    coloured = _coloured_members(case_result, results, views[0].bodies)
     for k, view in enumerate(views):
-        add(painter.support_traces(view.bodies), {k})
+        add(painter.support_traces(view.bodies, coloured if k == 0 else ()), {k})
     add(painter.member_traces(case_result, views[0].bodies), {0})
     for k, view in enumerate(views):
         add(painter.lever_traces(view.arrows), {k})
     for k, view in enumerate(views):
-        add(painter.arrow_traces(view.arrows), {k})
+        add(painter.arrow_traces(view.arrows, view.bodies), {k})
 
     for i, tr in enumerate(fig.data):
         tr.visible = visibility[0][i]
@@ -1422,10 +1495,10 @@ def model_figure(
         legend=dict(
             orientation="h",
             yanchor="bottom",
-            y=1.0,
+            y=1.02,  # clear of the plot's frame
             xanchor="right",
             x=1.0,
-            bgcolor="rgba(255,255,255,0.8)",
+            bgcolor="rgba(255,255,255,0)",
             font=dict(size=12),
         ),
     )
@@ -1457,31 +1530,10 @@ def model_figure(
     else:
         right, up = _screen_axes(*_camera(view_up))  # the screen's axes, in model axes
         data_lo, data_hi = _scene_bounds(fig)
-
-        def box(lo, hi):
-            """Padded axis ranges and aspect ratio for content within lo..hi."""
-            pad = 0.08 * max((hi - lo).max(), 1e-9)
-            lo, hi = lo - pad, hi + pad
-            ratio = (hi - lo) / (hi - lo).max()
-            ratio = np.maximum(ratio, 0.25)  # keep flat models from collapsing
-            # an orthographic view does not zoom with the eye's distance, so
-            # size the box instead: its projection fills the plot's height, or
-            # a width that suits a typical wide plot, whichever comes first
-            ratio *= min(FILL / (ratio @ np.abs(up)), 1.6 * FILL / (ratio @ np.abs(right)))
-            return lo, hi, ratio
-
-        lo, hi, ratio = box(data_lo, data_hi)
-        # the labels' extent in model units depends on the zoom, which depends
-        # on the extent: a second pass settles it (the plot spans 2 aspect units)
+        labels = _label_extents(fig)
         plot_height = height - layout["margin"]["t"] - layout["margin"]["b"]
-        for _ in range(2):
-            per_px = (hi - lo).max() / ratio.max() / (plot_height / 2)
-            labels = _label_boxes(fig, right, up, per_px)
-            if not len(labels):
-                break
-            lo, hi, ratio = box(
-                np.minimum(data_lo, labels.min(axis=0)), np.maximum(data_hi, labels.max(axis=0))
-            )
+        fit = SceneFit(data_lo, data_hi, labels, right, up)
+        lo, hi, ratio = fit.solve(PLOT_ASPECT, plot_height)
         # Everything so far is in model axes. Plotly only turns a 3D view about
         # its own z axis (its turntable ignores any other camera up), so each
         # model axis is drawn on the plotly axis that runs the same way on
@@ -1495,24 +1547,30 @@ def model_figure(
         base = dict(
             backgroundcolor="white", gridcolor="#e2e8f0", zerolinecolor="#cbd5e1", showspikes=False
         )
-        # fewer ticks on shorter axes, whose labels would otherwise run together
-        nticks = [int(n) for n in np.clip(np.round(9 * ratio / ratio.max()), 4, 9)]
-        axes = {}
-        for name, a, sign in zip(("xaxis", "yaxis", "zaxis"), shown, signs, strict=True):
-            span = [lo[a], hi[a]] if sign > 0 else [hi[a], lo[a]]
-            axes[name] = dict(title=f"{'xyz'[a]} ({L})", range=span, nticks=nticks[a], **base)
+        axes = {
+            name: dict(title=f"{'xyz'[a]} ({L})", **base)
+            for name, a in zip(("xaxis", "yaxis", "zaxis"), shown, strict=True)
+        }
         layout.update(
             scene=dict(
                 **axes,
                 aspectmode="manual",
-                aspectratio=dict(x=ratio[shown[0]], y=ratio[shown[1]], z=ratio[shown[2]]),
                 camera=dict(
                     eye=dict(x=EYE[0], y=EYE[1], z=EYE[2]),
                     up=dict(x=0, y=0, z=1),
                     projection=dict(type="orthographic"),
                 ),
-            )
+            ),
+            # what the HTML report needs to fit the scene to other plot sizes
+            meta={"engmech_fit": fit.to_json(shown, signs)},
         )
+        _apply_scene_fit(layout["scene"], lo, hi, ratio, shown, signs)
+    view_layouts = [{} for _ in views]
+    if planar:
+        for k in range(len(views)):
+            x, y = _view_ranges_2d(fig, visibility[k])
+            view_layouts[k] = {"xaxis.range": x, "yaxis.range": y}
+        layout["xaxis"]["range"], layout["yaxis"]["range"] = _view_ranges_2d(fig, visibility[0])
     if len(views) > 1:
         layout["updatemenus"] = [
             dict(
@@ -1527,13 +1585,107 @@ def model_figure(
                 bordercolor="#cbd5e1",
                 font=dict(size=12),
                 buttons=[
-                    dict(label=v.name, method="restyle", args=[{"visible": visibility[k]}])
+                    dict(
+                        label=v.name,
+                        method="update",
+                        args=[{"visible": visibility[k]}, view_layouts[k]],
+                    )
                     for k, v in enumerate(views)
                 ],
             )
         ]
     fig.update_layout(**layout)
     return fig
+
+
+# Plot width / height that the 3D scene is sized for in the figure itself; the
+# HTML report refits it to the size it is actually shown (or printed) at.
+PLOT_ASPECT = 1.6
+SCENE_PAD = 0.08  # space around the content, as a fraction of its largest extent
+FLAT_AXIS = 0.25  # the shortest a box side may be, relative to the longest
+
+
+@dataclass
+class SceneFit:
+    """Axis ranges and aspect ratio of a 3D scene that fit its content and its
+    labels (whose size is fixed in pixels) into a plot of a given size.
+    Everything is in model axes. The report's script (fit3d in
+    report.html.j2) repeats :meth:`solve`, so keep the two in step."""
+
+    lo: np.ndarray
+    hi: np.ndarray
+    labels: list  # (anchor, x extent in px, y extent in px), see _label_extents
+    right: np.ndarray  # screen right and up, in model axes
+    up: np.ndarray
+
+    def box(self, lo, hi, aspect: float):
+        """Padded ranges and aspect ratio for content within lo..hi."""
+        pad = SCENE_PAD * max((hi - lo).max(), 1e-9)
+        lo, hi = lo - pad, hi + pad
+        ratio = np.maximum((hi - lo) / (hi - lo).max(), FLAT_AXIS)
+        # an orthographic view does not zoom with the eye's distance, so size
+        # the box instead: its projection fills the plot's height, or its width
+        ratio *= FILL * min(1 / (ratio @ np.abs(self.up)), aspect / (ratio @ np.abs(self.right)))
+        return lo, hi, ratio
+
+    def solve(self, aspect: float, plot_height: float):
+        lo, hi, ratio = self.box(self.lo, self.hi, aspect)
+        # the labels' extent in model units depends on the zoom, which depends
+        # on the extent: a second pass settles it (the plot spans 2 aspect units)
+        for _ in range(2):
+            if not self.labels:
+                break
+            per_px = (hi - lo).max() / ratio.max() / (plot_height / 2)
+            corners = _label_corners(self.labels, self.right, self.up, per_px)
+            lo, hi, ratio = self.box(
+                np.minimum(self.lo, corners.min(axis=0)),
+                np.maximum(self.hi, corners.max(axis=0)),
+                aspect,
+            )
+        return lo, hi, ratio
+
+    def to_json(self, shown, signs) -> dict:
+        def r(v):
+            return [round(float(x), 9) for x in v]
+
+        return {
+            "lo": r(self.lo),
+            "hi": r(self.hi),
+            "right": r(self.right),
+            "up": r(self.up),
+            "labels": [[r(p), r(xs), r(ys)] for p, xs, ys in self.labels],
+            "fill": FILL,
+            "pad": SCENE_PAD,
+            "flat": FLAT_AXIS,
+            "shown": list(shown),
+            "signs": list(signs),
+        }
+
+
+def _apply_scene_fit(scene: dict, lo, hi, ratio, shown, signs) -> None:
+    """Set a scene's axis ranges (reversed where a model axis runs the other
+    way), aspect ratio and tick counts from a fit in model axes."""
+    # fewer ticks on shorter axes, whose labels would otherwise run together
+    nticks = [int(n) for n in np.clip(np.round(9 * ratio / ratio.max()), 4, 9)]
+    for name, a, sign in zip(("xaxis", "yaxis", "zaxis"), shown, signs, strict=True):
+        scene[name]["range"] = [lo[a], hi[a]] if sign > 0 else [hi[a], lo[a]]
+        scene[name]["nticks"] = nticks[a]
+    scene["aspectratio"] = dict(x=ratio[shown[0]], y=ratio[shown[1]], z=ratio[shown[2]])
+
+
+def _view_ranges_2d(fig: go.Figure, visible: list[bool]) -> tuple[list, list]:
+    """Axis ranges that frame what one view of a planar figure shows, with a
+    margin (labels near the edge may also spill into it: see cliponaxis)."""
+    xs, ys = [], []
+    for tr, shown in zip(fig.data, visible, strict=True):
+        if shown and tr.x is not None:
+            xs += [v for v in tr.x if v is not None]
+            ys += [v for v in tr.y if v is not None]
+    if not xs:
+        return [-1, 1], [-1, 1]
+    lo, hi = np.array([min(xs), min(ys)]), np.array([max(xs), max(ys)])
+    pad = 0.08 * max((hi - lo).max(), 1e-9)
+    return [lo[0] - pad, hi[0] + pad], [lo[1] - pad, hi[1] + pad]
 
 
 def _text_traces_3d(labels, color: str, group: str) -> list[go.Scatter3d]:
@@ -1560,11 +1712,11 @@ def _text_traces_3d(labels, color: str, group: str) -> list[go.Scatter3d]:
     return traces
 
 
-def _label_boxes(fig: go.Figure, right, up, per_px: float) -> np.ndarray:
-    """Corners of the 3D text labels in model axes, estimated from the text
-    length and position at ``per_px`` model units per screen pixel. Plotly
-    clips 3D text at the axis ranges, so the ranges must take these in."""
-    corners = []
+def _label_extents(fig: go.Figure) -> list:
+    """Each 3D text label as (anchor, x extent, y extent): the box its text
+    covers on screen, in pixels from the anchor (x right, y up), estimated
+    from the text length and position."""
+    labels = []
     for tr in fig.data:
         if tr.type != "scatter3d" or tr.mode != "text" or tr.x is None:
             continue
@@ -1579,9 +1731,26 @@ def _label_boxes(fig: go.Figure, right, up, per_px: float) -> np.ndarray:
             ys = {"bottom": (-gap_y - h, -gap_y), "top": (gap_y, gap_y + h)}.get(
                 vertical, (-h / 2, h / 2)
             )
-            p = np.array([x, y, z], float)
-            corners += [p + (sx * right + sy * up) * per_px for sx in xs for sy in ys]
+            labels.append((np.array([x, y, z], float), xs, ys))
+    return labels
+
+
+def _label_corners(labels, right, up, per_px: float) -> np.ndarray:
+    """Corners of labels (see _label_extents) in model axes, at ``per_px``
+    model units per screen pixel."""
+    corners = [
+        p + (sx * np.asarray(right) + sy * np.asarray(up)) * per_px
+        for p, xs, ys in labels
+        for sx in xs
+        for sy in ys
+    ]
     return np.array(corners) if corners else np.zeros((0, 3))
+
+
+def _label_boxes(fig: go.Figure, right, up, per_px: float) -> np.ndarray:
+    """Corners of a figure's 3D text labels in model axes. Plotly clips 3D
+    text at the axis ranges, so the ranges must take these in."""
+    return _label_corners(_label_extents(fig), right, up, per_px)
 
 
 def up_axis(value=None) -> np.ndarray:

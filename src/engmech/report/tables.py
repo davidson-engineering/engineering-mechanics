@@ -13,7 +13,7 @@ import numpy as np
 from engmech.model import GROUND, BuiltModel
 from engmech.results import CaseResult, JointResult, Results
 from engmech.solver import ROW_NAMES
-from engmech.units import UnitSystem, format_number
+from engmech.units import UnitSystem, format_number, unit_text
 
 INDETERMINATE = "indet."
 
@@ -148,6 +148,71 @@ def joint_table(results: Results, case: CaseResult, units: UnitSystem, kind: str
     return table
 
 
+def envelope_table(results: Results, units: UnitSystem, kind: str) -> Table | None:
+    """Every load case and combination side by side, for each component of
+    each support (kind 'support') or joint between bodies ('joint'), with the
+    largest and smallest value and the case it comes from. Components that
+    are zero in every case are left out."""
+    cases = list(results.cases.values())
+    if len(cases) < 2:
+        return None
+    joints = [j.name for j in cases[0].joints.values() if j.kind == kind]
+    if not joints:
+        return None
+    scale = max(_case_scale(c) for c in cases)
+    rows = []
+    for name in joints:
+        per_case = [c.joints[name] for c in cases]
+        first = per_case[0]
+        geo = results.model.joints[name].geometry
+        entries = []
+        for c in component_columns(results):
+            if first.transmits[c]:
+                values = [j.wrench[c] if j.determined[c] else None for j in per_case]
+                entries.append((ROW_NAMES[c], "force" if c < 3 else "moment", values, False))
+        for label in first.scalars:
+            values = [j.scalars[label] if j.scalar_determined[label] else None for j in per_case]
+            kind_of = first.scalar_kinds[label]
+            entries.append((SCALAR_HEADERS.get(label, label), kind_of, values, geo.sign_limit))
+        shown = 0
+        for label, kind_of, values, one_sided in entries:
+            known = [(v, c.name) for v, c in zip(values, cases, strict=True) if v is not None]
+            if known and all(abs(v) <= 1e-10 * max(scale, 1e-300) for v, _ in known):
+                continue  # zero in every case
+            row = [Cell(name if shown == 0 else "", "strong"), Cell(label, "muted")]
+            for v in values:
+                cell = _num(v, units, kind_of)
+                if one_sided and v is not None and v < 0:
+                    cell.style = "bad"  # a cable or contact would have to push or pull
+                row.append(cell)
+            for pick in (max, min):
+                if known:
+                    v, where = pick(known, key=lambda item: item[0])
+                    row.append(Cell(f"{units.format(v, kind_of, unit=False)} ({where})", "", True))
+                else:
+                    row.append(Cell(INDETERMINATE, "warn", True))
+            rows.append(row)
+            shown += 1
+    if not rows:
+        return None
+    head = "Support" if kind == "support" else "Joint"
+    title = "Support reactions by load case" if kind == "support" else "Joint forces by load case"
+    caption = (
+        "Each load case and combination side by side; Max and Min are the extreme values "
+        "and the case they come from. Components that are zero in every case are left out."
+    )
+    table = Table(
+        f"{kind}-envelope",
+        title,
+        [head, "", *(c.name for c in cases), "Max", "Min"],
+        rows,
+        caption,
+        numeric_from=2,
+    )
+    table.units = units_note(units, ["force", "moment"])
+    return table
+
+
 def unknown_table(results: Results, case: CaseResult, units: UnitSystem) -> Table | None:
     items = [j for j in case.joints.values() if j.kind == "unknown"]
     if not items:
@@ -241,7 +306,7 @@ def balance_table(results: Results, case: CaseResult, units: UnitSystem) -> Tabl
         )
     return Table(
         "balance",
-        "Equilibrium verification",
+        "Balance of each body",
         ["Body", "Residual force", "Residual moment", "Relative", "Result"],
         rows,
         "Independent check: every load and joint force on each body summed directly "
@@ -498,7 +563,7 @@ def parameters_table(model: BuiltModel) -> Table | None:
         return None
     rows = []
     for name, q in model.parameters.items():
-        unit = "" if q.unitless else f"{q.units:~P}"
+        unit = "" if q.unitless else unit_text(q.units)
         rows.append(
             [
                 Cell(name, "strong"),
